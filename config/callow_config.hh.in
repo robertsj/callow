@@ -1,0 +1,25 @@
+//-----------------------------------*-C-*-----------------------------------//
+/*!
+ * \file   callow_config.hh.in
+ * \author Jeremy Roberts 
+ * \brief  Definitions for callow packages.
+ */
+//---------------------------------------------------------------------------//
+
+#ifndef CALLOW_CONFIG_HH_
+#define CALLOW_CONFIG_HH_
+
+// Design by Contract
+#cmakedefine CALLOW_ENABLE_DBC
+
+// Unit Testing
+#cmakedefine CALLOW_ENABLE_TEST
+
+// External Libraries
+#cmakedefine CALLOW_ENABLE_OPENMP
+
+#endif // CALLOW_CONFIG_HH_ 
+
+//---------------------------------------------------------------------------//
+//              end of callow_config.hh.in
+//---------------------------------------------------------------------------//
