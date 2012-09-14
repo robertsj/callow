@@ -17,5 +17,8 @@ TARGET_LINK_LIBRARIES(test_Richardson   callow )
 ADD_TEST(test_Richardson                test_Richardson 0)
 
 # JACOBI
+ADD_EXECUTABLE(test_Jacobi              test_Jacobi.cc)
+TARGET_LINK_LIBRARIES(test_Jacobi       callow )
+ADD_TEST(test_Jacobi                    test_Jacobi 0)
 
 # GAUSS-SEIDEL

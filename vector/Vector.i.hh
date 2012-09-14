@@ -40,6 +40,15 @@ Vector<T>::Vector(const int n, T v)
 }
 
 template <class T>
+Vector<T>::Vector(const Vector &x)
+  : d_size(x.size()),
+    d_value(new T[d_size])
+{
+  set(0.0);
+  add(x);
+}
+
+template <class T>
 Vector<T>::~Vector()
 {
   if (d_size) delete [] d_value;

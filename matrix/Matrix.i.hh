@@ -66,6 +66,7 @@ Matrix<T>::~Matrix()
     delete [] d_row_pointers;
     delete [] d_nnz_per_row;
     delete [] d_count_per_row;
+    delete [] d_diagonal;
   }
 }
 
@@ -181,6 +182,7 @@ inline void Matrix<T>::preallocate()
  *
  *  This DIES if the central diagonal does not exist!!  Note
  *
+ *  \todo actually implement what i say
  */
 template <class T>
 inline void Matrix<T>::assemble()

@@ -11,6 +11,7 @@
 #define LINEARSOLVER_HH_
 
 #include "matrix/MatrixBase.hh"
+#include "utils/SP.hh"
 #include <vector>
 
 namespace callow
@@ -71,6 +72,14 @@ public:
   };
 
   //-------------------------------------------------------------------------//
+  // TYPEDEFS
+  //-------------------------------------------------------------------------//
+
+  typedef SP<LinearSolver<T> >                SP_solver;
+  typedef typename MatrixBase<T>::SP_matrix   SP_matrix;
+  typedef typename Vector<T>::SP_vector       SP_vector;
+
+  //-------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
   //-------------------------------------------------------------------------//
 
@@ -99,7 +108,7 @@ public:
    *  \param A  linear operator
    *  \param P  optional preconditioning process
    */
-  void set_operators(MatrixBase<T> *A, MatrixBase<T> *P = 0)
+  void set_operators(SP_matrix A, SP_matrix P = SP_matrix(0))
   {
     Require(A);
     d_A = A;
@@ -141,8 +150,8 @@ protected:
   std::vector<double> d_L2_residual;
   std::vector<double> d_LI_residual;
   int    d_number_iterations;
-  MatrixBase<T>* d_A;
-  MatrixBase<T>* d_P;
+  SP_matrix d_A;
+  SP_matrix d_P;
   bool d_monitor;
 
   //-------------------------------------------------------------------------//

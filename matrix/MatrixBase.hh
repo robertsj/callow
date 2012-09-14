@@ -10,6 +10,7 @@
 #ifndef callow_MATRIXBASE_HH_
 #define callow_MATRIXBASE_HH_
 
+#include "utils/SP.hh"
 #include "vector/Vector.hh"
 
 namespace callow
@@ -20,6 +21,12 @@ class MatrixBase
 {
 
 public:
+
+  //---------------------------------------------------------------------------//
+  // TYPEDEFS
+  //---------------------------------------------------------------------------//
+
+  typedef SP<MatrixBase<T> >    SP_matrix;
 
   //---------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
