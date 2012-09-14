@@ -36,14 +36,9 @@ int test_Jacobi(int argc, char *argv[])
   typedef Vector<double>        Vec;
   typedef Jacobi<double>        Solver;
 
-  int n = 5;
-
-  // Create test matrix
-  //Matrix<double>::SP_matrix A;// = test_matrix_1<double>();
-
 
   typename Matrix<double>::SP_matrix A;
-  n = 5;
+  int n = 5;
   A = test_matrix_1<double>(n);
 
   // Create two vectors
@@ -57,13 +52,12 @@ int test_Jacobi(int argc, char *argv[])
 //  16.6379310344828
 
   // Create solver
-  Solver solver(0.000001, 0.000001, 10000);
+  Solver solver(0.000001, 0.000001, 10);
 
   solver.set_operators(A);
   solver.set_monitor(true);
   int status = solver.solve(B, X);
   cout << " Status = " << status << endl;
-
 
   return 0;
 }

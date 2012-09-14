@@ -33,7 +33,7 @@ namespace callow
  *  \f[
  *      x^{n+1} = \overbrace{-\mathbf{D}^{-1}(\mathbf{L}+\mathbf{U})}^{\mathbf{M}}x^{n} + \mathbf{D}^{-1}b \, .
  *  \f]
- *  The procrdd converges if the iteration matrix is bounded, i.e.
+ *  The procedure converges if the iteration matrix is bounded, i.e.
  *  \f[
  *     \rho(\mathbf{M}) < 1 \, ,
  *  \f]
@@ -67,17 +67,6 @@ public:
   // PUBLIC FUNCTIONS
   //-------------------------------------------------------------------------//
 
-
-  //-------------------------------------------------------------------------//
-  // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
-  //-------------------------------------------------------------------------//
-
-  /**
-   *  \param b  right hand side
-   *  \param x  unknown vector
-   */
-  int solve(const Vector<T> &b, Vector<T> &x);
-
 private:
 
   //-------------------------------------------------------------------------//
@@ -95,10 +84,16 @@ private:
   using LinearSolver<T>::d_number_iterations;
   using LinearSolver<T>::d_A;
   using LinearSolver<T>::d_P;
-  using LinearSolver<T>::d_monitor;
 
-  /// relaxation factor
-  double d_omega;
+  //-------------------------------------------------------------------------//
+  // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
+  //-------------------------------------------------------------------------//
+
+  /**
+   *  \param b  right hand side
+   *  \param x  unknown vector
+   */
+  void solve_impl(const Vector<T> &b, Vector<T> &x);
 
 };
 

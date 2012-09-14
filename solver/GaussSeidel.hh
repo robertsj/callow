@@ -1,14 +1,14 @@
 //----------------------------------*-C++-*----------------------------------//
 /*!
- * \file   Richardson.hh
+ * \file   GaussSeidel.hh
  * \author robertsj
- * \date   Sep 13, 2012
- * \brief  Richardson class definition.
+ * \date   Sep 14, 2012
+ * \brief  GaussSeidel class definition.
  */
 //---------------------------------------------------------------------------//
 
-#ifndef RICHARDSON_HH_
-#define RICHARDSON_HH_
+#ifndef GAUSSSEIDEL_HH_
+#define GAUSSSEIDEL_HH_
 
 #include "LinearSolver.hh"
 
@@ -16,21 +16,36 @@ namespace callow
 {
 
 /**
- *  \class Richardson
- *  \brief Uses (modified) Richardson iteration to solve a system
+ *  \class GaussSeidel
+ *  \brief Uses Gauss-Seidel iteration to solve a system
  *
- *  Richardson iteration solves a linear system via the
- *  process
+ *  Gauss-Seidel iteration in matrix form uses a splitting of
+ *  the form
  *  \f[
- *     x^{(n+1)} = (\mathbf{I - \omega A})x^{(n)} + \omega b
+ *      \mathbf{A} = \mathbf{L} + \mathbf{U} +  \mathbf{D} \, ,
  *  \f]
- *  where \f$ \omega \f$ is something like a relaxation factor
- *  that takes on values between (roughly) 0 and 2.  By default,
- *  \f$ \omega = 1 \f$.
+ *  which are strictly lower and upper triangle and diagonal,
+ *  respectively.  The Gauss-Seidel iteration is then
+ *  \f[
+ *      \mathbf{D + L} x^{n+1} = -\mathbf{U}x^{n} + b
+ *  \f]
+ *  or
+ *  \f[
+ *      x^{n+1} = \overbrace{-\mathbf{D+L}^{-1}(\mathbf{U})}^{\mathbf{M}}x^{n} + \mathbf{D+L}^{-1}b \, .
+ *  \f]
+ *  Alternatively, one can swap \f$ U \f$ and \f$ L \f$ to produce
+ *  the backward Gauss-Seidel iteration.  If used together, one
+ *  has symmetric Gauss-Seidel iteration.
+ *
+ *  It can be shown that Gauss-Seidel converges if \ref Jacobi
+ *  converges.
+ *
+ *  Because we use a sparse matrix, we actually access the elements
+ *  directly rather than via indexing.
  *
  */
 template<class T>
-class Richardson: public LinearSolver<T>
+class GaussSeidel: public LinearSolver<T>
 {
 
 public:
@@ -41,19 +56,13 @@ public:
   // CONSTRUCTOR & DESTRUCTOR
   //-------------------------------------------------------------------------//
 
-  Richardson(const double atol, const double rtol, const int maxit,
-             const double omega = 1.0);
+  GaussSeidel(const double atol, const double rtol, const int maxit);
 
-  virtual ~Richardson(){}
+  virtual ~GaussSeidel(){}
 
   //-------------------------------------------------------------------------//
   // PUBLIC FUNCTIONS
   //-------------------------------------------------------------------------//
-
-  void set_omega(const double omega)
-  {
-    d_omega = omega;
-  }
 
 private:
 
@@ -73,9 +82,6 @@ private:
   using LinearSolver<T>::d_A;
   using LinearSolver<T>::d_P;
 
-  /// relaxation factor
-  double d_omega;
-
   //-------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
   //-------------------------------------------------------------------------//
@@ -91,6 +97,7 @@ private:
 } // end namespace callow
 
 // Inline member definitions
-#include "Richardson.i.hh"
+#include "GaussSeidel.i.hh"
 
-#endif /* RICHARDSON_HH_ */
+
+#endif /* GAUSSSEIDEL_HH_ */

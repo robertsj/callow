@@ -11,14 +11,8 @@ ADD_TEST(test_Matrix                    test_Matrix 0)
 
 ## Solvers
 
-# RICHARDSON
-ADD_EXECUTABLE(test_Richardson          test_Richardson.cc)
-TARGET_LINK_LIBRARIES(test_Richardson   callow )
-ADD_TEST(test_Richardson                test_Richardson 0)
+ADD_EXECUTABLE(test_LinearSolver        test_LinearSolver.cc)
+TARGET_LINK_LIBRARIES(test_LinearSolver callow )
 
-# JACOBI
-ADD_EXECUTABLE(test_Jacobi              test_Jacobi.cc)
-TARGET_LINK_LIBRARIES(test_Jacobi       callow )
-ADD_TEST(test_Jacobi                    test_Jacobi 0)
-
-# GAUSS-SEIDEL
+ADD_TEST(test_Richardson                test_LinearSolver 0)
+ADD_TEST(test_Jacobi                    test_LinearSolver 1)

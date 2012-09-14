@@ -25,7 +25,7 @@ template <class T>
 Jacobi<T>::Jacobi(const double  atol,
                   const double  rtol,
                   const int     maxit)
-  : LinearSolver<T>(atol, rtol, maxit)
+  : LinearSolver<T>(atol, rtol, maxit, "Jacobi")
 {
   /* ... */
 }
@@ -36,10 +36,9 @@ Jacobi<T>::Jacobi(const double  atol,
 
 
 template <class T>
-inline int Jacobi<T>::solve(const Vector<T> &b, Vector<T> &x)
+inline void Jacobi<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 {
-  Require(x.size() == b.size());
-  Require(x.size() == d_A->number_rows());
+
   Insist(dynamic_cast< Matrix<T>* >(d_A.bp()),
     "Need an explicit matrix for use with Jacobi iteration");
   typename Matrix<T>::SP_matrix A = d_A;
@@ -57,21 +56,15 @@ inline int Jacobi<T>::solve(const Vector<T> &b, Vector<T> &x)
 
   // compute initial residual Ax - b and its norm
   A->multiply((*x0), (*x1));
-  x1->scale(d_omega);
-  double r0 = x1->norm_residual(b, Vec::L2);
-  d_L2_residual[0] = r0;
-  if (r0 < d_absolute_tolerance) return Base::SUCCESS;
-  if (d_monitor)
-    printf("iteration: %5i    residual: %12.8e \n", 0, r0);
-
+  T r = x1->norm_residual(b, Vec::L2);
+  if (monitor_init(r)) return;
 
   // perform iterations
-  int status = Base::MAXIT;
-  for (int iteration = 1; iteration < d_maximum_iterations; ++iteration)
+  for (int iteration = 1; iteration <= d_maximum_iterations; ++iteration)
   {
 
     //---------------------------------------------------//
-    // compute X1 <-- inv(D)*(L+U)*X0 + inv(D)*b
+    // compute X1 <-- -inv(D)*(L+U)*X0 + inv(D)*b
     //---------------------------------------------------//
 
     T* a = A->value();
@@ -89,14 +82,13 @@ inline int Jacobi<T>::solve(const Vector<T> &b, Vector<T> &x)
         v += a[p] * (*x0)[A->column(p)];
       (*x1)[i] = (b[i] - v) / a[d];
     }
-    a = 0;
+    a = 0; // nullify pointer
 
     //---------------------------------------------------//
     // compute residual norm
     //---------------------------------------------------//
 
-    double r = x1->norm_residual(*x0, Vec::L2);
-    d_L2_residual[iteration] = r;
+    r = x1->norm_residual(*x0, Vec::L2);
 
     //---------------------------------------------------//
     // swap pointers
@@ -109,34 +101,17 @@ inline int Jacobi<T>::solve(const Vector<T> &b, Vector<T> &x)
     // check convergence
     //---------------------------------------------------//
 
-    if (d_monitor)
-      printf("iteration: %5i    residual: %12.8e \n", iteration, r);
+    if (monitor(iteration, r)) break;
 
-    if (r < std::max(d_relative_tolerance * r0, d_absolute_tolerance))
-    {
-      if (d_monitor)
-        printf("*** Jacobi converged in %5i iterations with a residual of %12.8e \n", iteration, r );
-      status = Base::SUCCESS;
-      break;
-    }
-    else if (r - d_L2_residual[iteration - 1] > 0.0 and iteration > 1)
-    {
-      if (d_monitor)
-        printf("*** Jacobi diverged at iteration %5i with a residual of %12.8e \n", iteration, r );
-      status = Base::DIVERGE;
-      break;
-    }
   }
-  if (status == Base::MAXIT and d_monitor)
-    printf("*** Jacobi did not converge within the maximum number of iterations \n");
 
   // copy into the solution vector if needed
-  if (x0 != &x) x = *x0;
+  if (x0 != &x) x.copy(*x0);
 
-  return status;
 }
 
 } // end namespace callow
+
 #endif // JACOBI_I_HH_ 
 
 //---------------------------------------------------------------------------//

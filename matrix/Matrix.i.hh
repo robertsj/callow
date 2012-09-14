@@ -347,24 +347,24 @@ template <class T>
 inline void Matrix<T>::display() const
 {
   Require(d_is_ready);
-  std::cout << " CSR matrix " << std::endl;
-  std::cout << " ---------------------------" << std::endl;
-  std::cout << "      number rows = " << d_m << std::endl;
-  std::cout << "   number columns = " << d_m << std::endl;
-  std::cout << "   allocated size = " << d_total_nnz << std::endl;
-  std::cout << std::endl;
+  printf(" CSR matrix \n");
+  printf(" ---------------------------\n");
+  printf("      number rows = %5i \n", d_m);
+  printf("   number columns = %5i \n", d_n);
+  printf("   allocated size = %5i \n\n", d_total_nnz);
+  printf("\n");
   for (int i = 0; i < d_m; i++)
   {
-    std::cout << " row " << i << " | ";
+    printf(" row  %5i | ", i);
     for (int p = d_row_pointers[i]; p < d_row_pointers[i + 1]; p++)
     {
       int j = d_column_indices[p];
       T   v = d_value[p];
-      std::cout << " " << j << "(" << v << ")";
+      printf(" %5i (%10.6e)", j, v);
     }
-    std::cout << std::endl;
+    printf("\n");
   }
-  std::cout << std::endl;
+  printf("\n");
 }
 
 //---------------------------------------------------------------------------//

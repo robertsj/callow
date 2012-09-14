@@ -12,6 +12,7 @@
 
 #include "utils/DBC.hh"
 #include <cmath>
+#include <cstdio>
 #include <iostream>
 
 namespace callow
@@ -180,6 +181,15 @@ inline void Vector<T>::divide(const Vector &x)
     d_value[i] /= x[i];
 }
 
+template <class T>
+inline void Vector<T>::copy(const Vector &x)
+{
+  Require(x.size() == d_size);
+  for (int i = 0; i < d_size; i++)
+    d_value[i] = x[i];
+}
+
+
 //---------------------------------------------------------------------------//
 // IO
 //---------------------------------------------------------------------------//
@@ -187,16 +197,14 @@ inline void Vector<T>::divide(const Vector &x)
 template <class T>
 void Vector<T>::display() const
 {
-  std::cout << " Vector " << std::endl;
-  std::cout << " ---------------------------" << std::endl;
-  std::cout << "      number rows = " << d_size << std::endl;
-  std::cout << std::endl;
+  printf(" Vector \n");
+  printf(" ---------------------------\n");
+  printf("      number rows = %5i \n\n", d_size);
   for (int i = 0; i < d_size; i++)
   {
-    std::cout << " row " << i << " | " << d_value[i] << std::endl;
+    printf(" row  %5i | %12.10e \n", i, d_value[i]);
   }
-  std::cout << std::endl;
-
+  printf("\n");
 }
 
 } // end namespace callow

@@ -1,15 +1,17 @@
 //----------------------------------*-C++-*----------------------------------//
 /*!
- * \file   Richardson.i.hh
+ * \file   GaussSeidel.i.hh
  * \author robertsj
- * \date   Sep 13, 2012
- * \brief  Richardson inline member definitions
+ * \date   Sep 14, 2012
+ * \brief  GaussSeidel.i class definition.
+ * \note   Copyright (C) 2012 Jeremy Roberts. 
  */
 //---------------------------------------------------------------------------//
 
-#ifndef RICHARDSON_I_HH_
-#define RICHARDSON_I_HH_
+#ifndef GAUSSSEIDEL_I_HH_
+#define GAUSSSEIDEL_I_HH_
 
+#include "matrix/Matrix.hh"
 #include <cmath>
 #include <cstdio>
 
@@ -21,14 +23,12 @@ namespace callow
 //---------------------------------------------------------------------------//
 
 template <class T>
-Richardson<T>::Richardson(const double  atol,
-                          const double  rtol,
-                          const int     maxit,
-                          const double  omega)
-  : LinearSolver<T>(atol, rtol, maxit, "Richardson")
-  , d_omega(omega)
+GaussSeidel<T>::GaussSeidel(const double  atol,
+                  const double  rtol,
+                  const int     maxit)
+  : LinearSolver<T>(atol, rtol, maxit, "GaussSeidel")
 {
-
+  /* ... */
 }
 
 //---------------------------------------------------------------------------//
@@ -37,15 +37,14 @@ Richardson<T>::Richardson(const double  atol,
 
 
 template <class T>
-inline void Richardson<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
+inline void GaussSeidel<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 {
 
-  typedef Vector<T> Vec;
+  Insist(dynamic_cast< Matrix<T>* >(d_A.bp()),
+    "Need an explicit matrix for use with GaussSeidel iteration");
+  typename Matrix<T>::SP_matrix A = d_A;
 
-  // scale rhs by relaxation factor
-  Vec B(b.size(), 0.0);
-  B.add(b);
-  B.scale(d_omega);
+  typedef Vector<T> Vec;
 
   // temporary storage and pointers for swapping
   Vec temp(x.size(), 0.0);
@@ -53,10 +52,9 @@ inline void Richardson<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   Vec* x1 = &temp;
   Vec* swap;
 
-  // compute initial residual w(Ax - b) and its norm
-  d_A->multiply((*x0), (*x1));
-  x1->scale(d_omega);
-  T r = x1->norm_residual(B, Vec::L2);
+  // compute initial residual Ax - b and its norm
+  A->multiply((*x0), (*x1));
+  T r = x1->norm_residual(b, Vec::L2);
   if (monitor_init(r)) return;
 
   // perform iterations
@@ -64,19 +62,25 @@ inline void Richardson<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   {
 
     //---------------------------------------------------//
-    // compute X1 <-- (I - w*A) * X0 + w*b
+    // compute X1 <-- -inv(D+L)*U*X0 + inv(D+L)*b
     //---------------------------------------------------//
 
-    // X1 <-- A * X0
-    d_A->multiply((*x0), (*x1));
-    // X1 <-- w * X1 = w * A * X0
-    x1->scale(d_omega);
-    // X1 <-- X1 - X0 =  (A - I) * X0
-    x1->subtract(*x0);
-    // X1 <-- X1 - b = (A - I) * X0 - b
-    x1->subtract(B);
-    // X1 <-- -X1 = (I - A) * X0 + b
-    x1->scale(-1);
+    T* a = A->value();
+    for (int i = 0; i < A->number_rows(); i++)
+    {
+      T v = 0;
+      int p = A->start(i);
+      int d = A->diagonal(i);
+      // lower triangle -- we have updated unknowns
+      for (; p < d; ++p)
+        v += a[p] * (*x1)[A->column(p)];
+      ++p; // skip diagonal
+      // upper triangle -- we do not have updated unknowns
+      for (; p < A->end(i); ++p)
+        v += a[p] * (*x0)[A->column(p)];
+      (*x1)[i] = (b[i] - v) / a[d];
+    }
+    a = 0; // nullify pointer
 
     //---------------------------------------------------//
     // compute residual norm
@@ -102,9 +106,9 @@ inline void Richardson<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   // copy into the solution vector if needed
   if (x0 != &x) x.copy(*x0);
 
-  return;
 }
 
 } // end namespace callow
 
-#endif /* RICHARDSON_I_HH_ */
+
+#endif /* GAUSSSEIDEL_I_HH_ */

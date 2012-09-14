@@ -74,6 +74,7 @@ public:
   void subtract(const Vector<T>& x);
   void multiply(const Vector<T>& x);
   void divide(const Vector<T>& x);
+  void copy(const Vector<T>& x);
 
   //---------------------------------------------------------------------------//
   // QUERY

@@ -12,6 +12,8 @@
 
 #include "matrix/MatrixBase.hh"
 #include "utils/SP.hh"
+#include <cstdio>
+#include <string>
 #include <vector>
 
 namespace callow
@@ -53,8 +55,13 @@ namespace callow
  *    - Gauss-Seidel
  *    - SOR
  *    - GMRES(m)
+ *  possibly with preconditioning.
  *
- *  possibly with preconditioning
+ *  Note, some linear solvers require that the matrix provides L, U, and
+ *  D operations.  Here, we simply require those solvers to have a \ref
+ *  Matrix operator or subclasses so that the elements can be accessed
+ *  directly.
+ *
  */
 template<class T>
 class LinearSolver
@@ -83,7 +90,10 @@ public:
   // CONSTRUCTOR & DESTRUCTOR
   //-------------------------------------------------------------------------//
 
-  LinearSolver(const double atol, const double rtol, const int maxit)
+  LinearSolver(const double atol,
+               const double rtol,
+               const int maxit,
+               std::string name = "solver")
     : d_absolute_tolerance(atol)
     , d_relative_tolerance(rtol)
     , d_maximum_iterations(maxit)
@@ -92,10 +102,11 @@ public:
     , d_LI_residual(maxit + 1, 0)
     , d_number_iterations(0)
     , d_monitor(false)
+    , d_name(name)
   {
     Require(d_absolute_tolerance > 0.0);
     Require(d_relative_tolerance > 0.0);
-    Require(d_maximum_iterations > 0.0);
+    Require(d_maximum_iterations >= 0);
   }
 
   virtual ~LinearSolver(){}
@@ -115,27 +126,47 @@ public:
     Ensure(d_A->number_rows() == d_A->number_columns());
   }
 
+  /**
+   *  \param atol   absolute tolerance (||r_n|| < atol)
+   *  \param rtol   relative tolerance (||r_n|| < rtol * ||r_0||)
+   *  \param maxit  maximum iterations (n < maxit)
+   */
   void set_tolerances(const double atol, const double rtol, const int maxit)
   {
     d_absolute_tolerance = atol;
     d_relative_tolerance = rtol;
     d_maximum_iterations = maxit;
+    Require(d_absolute_tolerance > 0.0);
+    Require(d_relative_tolerance > 0.0);
+    Require(d_maximum_iterations >= 0);
   }
 
+  /**
+   *  \param v  on or off
+   */
   void set_monitor(const bool v)
   {
     d_monitor = v;
   }
 
-  //-------------------------------------------------------------------------//
-  // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
-  //-------------------------------------------------------------------------//
-
   /**
    *  \param b  right hand side
    *  \param x  unknown vector
    */
-  virtual int solve(const Vector<T> &b, Vector<T> &x) = 0;
+  int solve(const Vector<T> &b, Vector<T> &x)
+  {
+    Require(x.size() == b.size());
+    Require(x.size() == d_A->number_rows());
+
+    d_status = MAXIT;
+    solve_impl(b, x);
+    if (d_status ==  MAXIT)
+    {
+      printf("*** %s did not converge within the maximum number of iterations\n",
+             d_name.c_str());
+    }
+    return d_status;
+  }
 
 protected:
 
@@ -143,6 +174,7 @@ protected:
   // DATA
   //-------------------------------------------------------------------------//
 
+  std::string d_name;
   double d_absolute_tolerance;
   double d_relative_tolerance;
   int    d_maximum_iterations;
@@ -157,6 +189,55 @@ protected:
   //-------------------------------------------------------------------------//
   // IMPLEMENTATION
   //-------------------------------------------------------------------------//
+
+  // print out iteration and residual for initial
+  bool monitor_init(T r)
+  {
+    d_L2_residual[0] = r;
+    if (d_monitor) printf("iteration: %5i    residual: %12.8e \n", 0, r);
+    if (r < d_absolute_tolerance)
+    {
+      printf("*** %s converged in %5i iterations with a residual of %12.8e \n",
+             d_name.c_str(), 0, r );
+      d_status = SUCCESS;
+      return true;
+    }
+    return false;
+  }
+
+  // print out iteration and residual
+  bool monitor(int it, T r)
+  {
+    d_number_iterations = it;
+    d_L2_residual[it] = r;
+    if (d_monitor) printf("iteration: %5i    residual: %12.8e \n", it, r);
+
+    if (r < std::max(d_relative_tolerance * d_L2_residual[it - 1],
+                                d_absolute_tolerance))
+    {
+      printf("*** %s converged in %5i iterations with a residual of %12.8e \n",
+             d_name.c_str(), it, r );
+      d_status = SUCCESS;
+      return true;
+    }
+    else if (it >  1 and r - d_L2_residual[it - 1] > 0.0)
+    {
+      printf("*** %s diverged \n", d_name.c_str());
+      d_status = DIVERGE;
+      return true;
+    }
+    return false;
+  }
+
+  //-------------------------------------------------------------------------//
+  // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
+  //-------------------------------------------------------------------------//
+
+  virtual void solve_impl(const Vector<T> &b, Vector<T> &x) = 0;
+
+private:
+
+  int d_status;
 
 };
 
