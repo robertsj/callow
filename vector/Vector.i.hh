@@ -55,6 +55,15 @@ Vector<T>::~Vector()
   if (d_size) delete [] d_value;
 }
 
+template <class T>
+void Vector<T>::resize(const int n)
+{
+  if (d_size) delete [] d_value;
+  d_size = n;
+  if (d_size) d_value = new T[d_size];
+}
+
+
 //---------------------------------------------------------------------------//
 // ACCESS
 //---------------------------------------------------------------------------//
@@ -155,6 +164,14 @@ inline void Vector<T>::add(const Vector &x)
   Require(x.size() == d_size);
   for (int i = 0; i < d_size; i++)
     d_value[i] += x[i];
+}
+
+template <class T>
+inline void Vector<T>::add_a_times_x(const T a, const Vector<T>& x)
+{
+  Require(x.size() == d_size);
+  for (int i = 0; i < d_size; i++)
+    d_value[i] += a*x[i];
 }
 
 template <class T>

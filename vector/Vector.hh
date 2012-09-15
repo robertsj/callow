@@ -50,6 +50,7 @@ public:
   Vector(const int n, T v = 0);
   Vector(const Vector &x);
   virtual ~Vector();
+  void resize(const int n);
 
   //---------------------------------------------------------------------------//
   // ACCESS
@@ -75,6 +76,7 @@ public:
   void multiply(const Vector<T>& x);
   void divide(const Vector<T>& x);
   void copy(const Vector<T>& x);
+  void add_a_times_x(const T a, const Vector<T>& x);
 
   //---------------------------------------------------------------------------//
   // QUERY

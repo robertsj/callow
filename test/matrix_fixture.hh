@@ -25,6 +25,9 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
   double l = -0.20;
   double d = 0.50;
   double u = -0.20;
+//  double l = -1;
+//  double d = 2;
+//  double u = -1;
 
   for (int row = 0; row < n; row++)
   {

@@ -38,6 +38,11 @@ namespace callow
  *  subspace at every iteration, stopping when that residual
  *  is small enough.
  *
+ *  In this implementation, we employ GMRES(m) as described in
+ *  Kelley's red book.  A key feature is its use of Givens
+ *  rotation for incremental conversion of the upper Hessenberg
+ *  matrix \f$ H \f$ to an upper triangle matrix \f$ R \f$.
+ *
  */
 template<class T>
 class GMRES: public LinearSolver<T>
@@ -54,10 +59,7 @@ public:
   GMRES(const double atol, const double rtol, const int maxit,
         const int restart);
 
-  virtual ~GMRES()
-  {
-    delete [] d_H;
-  }
+  virtual ~GMRES();
 
   //-------------------------------------------------------------------------//
   // PUBLIC FUNCTIONS
@@ -84,8 +86,15 @@ private:
   /// maximum size of krylov subspace
   int d_restart;
 
-  /// upper hessenberg (treated as dense)
-  T d_H;
+  /// reorthogonalize flag [0 = none, 1 = formula, 2 = always]
+  int d_reorthog;
+
+  /// upper hessenberg [m+1][m], treated as dense
+  T** d_H;
+
+  /// cosine and sine term in givens rotation [k+1]
+  Vector<T> d_c;
+  Vector<T> d_s;
 
   //-------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
@@ -97,6 +106,12 @@ private:
    */
   void solve_impl(const Vector<T> &b, Vector<T> &x);
 
+  // apply givens rotation to H
+  void apply_givens(const int k);
+
+  void compute_y(Vector<T> &y, const Vector<T> &g, const int k);
+
+  void initialize_H();
 };
 
 } // end namespace callow

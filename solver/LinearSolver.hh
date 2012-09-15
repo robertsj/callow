@@ -101,7 +101,8 @@ public:
     , d_L2_residual(maxit + 1, 0)
     , d_LI_residual(maxit + 1, 0)
     , d_number_iterations(0)
-    , d_monitor(false)
+    , d_monitor_output(false)
+    , d_monitor_diverge(true)
     , d_name(name)
   {
     Require(d_absolute_tolerance > 0.0);
@@ -142,11 +143,21 @@ public:
   }
 
   /**
-   *  \param v  on or off
+   *  Print residual norms and other diagonostic information.
+   *
+   *  \param v  monitor via stdout
    */
-  void set_monitor(const bool v)
+  void set_monitor_output(const bool v)
   {
-    d_monitor = v;
+    d_monitor_output = v;
+  }
+
+  /**
+   *  Turn on monitoring of diverging iterations.
+   */
+  void set_monitor_diverge(const bool v)
+  {
+    d_monitor_diverge = v;
   }
 
   /**
@@ -184,7 +195,8 @@ protected:
   int    d_number_iterations;
   SP_matrix d_A;
   SP_matrix d_P;
-  bool d_monitor;
+  bool d_monitor_output;
+  bool d_monitor_diverge;
 
   //-------------------------------------------------------------------------//
   // IMPLEMENTATION
@@ -194,7 +206,7 @@ protected:
   bool monitor_init(T r)
   {
     d_L2_residual[0] = r;
-    if (d_monitor) printf("iteration: %5i    residual: %12.8e \n", 0, r);
+    if (d_monitor_output) printf("iteration: %5i    residual: %12.8e \n", 0, r);
     if (r < d_absolute_tolerance)
     {
       printf("*** %s converged in %5i iterations with a residual of %12.8e \n",
@@ -210,8 +222,8 @@ protected:
   {
     d_number_iterations = it;
     d_L2_residual[it] = r;
-    if (d_monitor) printf("iteration: %5i    residual: %12.8e \n", it, r);
-
+    if (d_monitor_output) printf("iteration: %5i    residual: %12.8e \n", it, r);
+    Assert(it > 0);
     if (r < std::max(d_relative_tolerance * d_L2_residual[it - 1],
                                 d_absolute_tolerance))
     {
@@ -220,7 +232,7 @@ protected:
       d_status = SUCCESS;
       return true;
     }
-    else if (it >  1 and r - d_L2_residual[it - 1] > 0.0)
+    else if (d_monitor_diverge and it >  1 and r - d_L2_residual[it - 1] > 0.0)
     {
       printf("*** %s diverged \n", d_name.c_str());
       d_status = DIVERGE;

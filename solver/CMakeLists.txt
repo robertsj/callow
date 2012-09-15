@@ -4,6 +4,7 @@ SET(SOLVER_SRC
   ${SRC_DIR}/Richardson.cc
   ${SRC_DIR}/Jacobi.cc
   ${SRC_DIR}/GaussSeidel.cc
+  ${SRC_DIR}/GMRES.cc
   PARENT_SCOPE
 )
 
