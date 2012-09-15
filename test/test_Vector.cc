@@ -45,6 +45,12 @@ int test_Vector(int argc, char *argv[])
 
   vec_dbl y(10, 2.0);
   double val = v.dot(y);
+  double val2 = 0.0;
+  for (int i = 0; i < 10; i++)
+  {
+    val2 += v[i]*y[i];
+  }
+  cout << val2 << endl;
   TEST(soft_equiv(val, 20.0));
 
   return 0;

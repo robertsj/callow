@@ -11,6 +11,7 @@
 #define callow_MATRIX_HH_
 
 #include "MatrixBase.hh"
+#include <vector>
 
 namespace callow
 {
@@ -140,6 +141,12 @@ private:
   int* d_diagonal;
   /// are we allocated?
   bool d_allocated;
+
+  // temporaries
+  std::vector<int> d_i;
+  std::vector<int> d_j;
+  std::vector<T>   d_v;
+  int d_counter;
 
   //---------------------------------------------------------------------------//
   // IMPLEMENTATION

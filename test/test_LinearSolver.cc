@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 //---------------------------------------------------------------------------//
 
 // system size
-int n = 100000;
+int n = 4;
 
 // create two vectors
 Vector<double> X(n, 0.0);
@@ -96,18 +96,17 @@ int test_GaussSeidel(int argc, char *argv[])
 
 int test_GMRES(int argc, char *argv[])
 {
-  GMRES<double> solver(abstol, reltol, 200, 30);
-  solver.set_operators(test_matrix_1<double>(n));
-  solver.set_monitor_output(true);
-  solver.set_monitor_diverge(true);
-  int status = solver.solve(B, X);
+  typename Matrix<double>::SP_matrix A = test_matrix_2<double>(n);
+//  GMRES<double> solver(abstol, reltol, 300, 30);
+//  solver.set_operators(test_matrix_2<double>(n));
+//  solver.set_monitor_output(true);
+//  solver.set_monitor_diverge(true);
+  //int status = solver.solve(B, X);
 //  GMRES<double> solver2(abstol, reltol, 10, 10 );
 //  solver2.set_operators(test_matrix_1<double>(n));
 //  solver2.set_monitor_output(true);
 //  solver2.set_monitor_diverge(false);
 //  status = solver2.solve(B, X);
-
- // X.display();
 //  TEST(status == 0);
 //  TEST(soft_equiv(X[0],  5.0, 1e-9));
 //  TEST(soft_equiv(X[1],  7.5, 1e-9));

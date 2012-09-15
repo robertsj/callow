@@ -14,6 +14,7 @@
 namespace callow
 {
 
+// test 1D finite difference stencil
 template<class T>
 typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
 {
@@ -56,6 +57,114 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
       A->add_row(row, c, v);
     }
   }
+  A->assemble();
+  return A;
+}
+
+/*
+ *  sample 2D neutron diffusion matrix
+ *
+ *  100 cm by 100 cm with reflecting conditions on left and right
+ *  group:    0    1
+ *  D         1.5  0.4
+ *  SigmaR    0.1  0.1
+ *  Sigma21   0.1  n/a
+ */
+template <class T>
+typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
+{
+
+  // total cells = 2 * n * n
+  // mesh size   = n * n
+  // num group   = 2
+  typename Matrix<T>::SP_matrix A;
+  int size = 2 * n * n;
+  A = new Matrix<T>(size, size);
+  int nnz = 2 * 2 + 2;
+  A->preallocate(nnz);
+
+  // cell width
+  T h = 100.0 / n;
+  // diffusion coefficient
+  T D[] = {1.4, 0.5};
+  // removal cross section
+  T sigma_r[] = {1.0,  0.3};
+  T sigma_s21 = 0.017;
+  // boundary condition
+  T albedo[] = {1, 0, 1, 0};
+
+  for (int g = 0; g < 2; g++)
+  {
+    // Loop over all cells.
+    for (int cell = 0; cell < n * n; cell++)
+    {
+      // Compute row index.
+      int row = cell + g * n * n;
+      // Get the directional indices.
+      int i = cell % n;
+      int j = int(std::floor(double(cell % n * n)/double(n)));
+      // Direction-specific leakage coefficients.
+      double jo[4] = {0.0, 0.0, 0.0, 0.0};
+      // Index arrays to help determine if a cell surface is on the boundary.
+      int bound[4] = {i, i, j, j};
+      int nxyz[2][2] = {0, n-1, 0, n-1};
+      // leak --> 0=-x, 1=+x, 2=-y, 3=+y
+      for (int leak = 0; leak < 4; leak++)
+      {
+        // Determine whether this is a left/right, bottom/top,
+        // or south/north boundary.
+        int xyz_idx = std::floor(leak / 2);
+        // Determine the direction, e.g. left (-) vs right (+).
+        int dir_idx = 1 - ((leak + 1) % 2);
+        // Put i, j, k into an array.  The neighbor indices are a perturbation of this.
+        int neig_idx[3] = {i, j};
+        // Determine whether the neighbor is positive (+1) or negative (-1)
+        // relative to the surface under consideration, and then decrement
+        // the appropriate x, y, or z index.
+        int shift_idx   = -2 * ((leak + 1) % 2) + 1;
+        neig_idx[xyz_idx] += shift_idx;
+        // Compute coupling coefficient
+        double dtilde = 0.0;
+        if (bound[leak] == nxyz[xyz_idx][dir_idx])
+        {
+          dtilde = ( 2.0 * D[g] * (1.0 - albedo[leak]) ) /
+                   ( 4.0 * D[g] * (1.0 + albedo[leak]) +
+                    (1.0 - albedo[leak]) * h);
+        }
+        else // not a boundary
+        {
+          // Get the neighbor data.
+          int ii = neig_idx[0];
+          int jj = neig_idx[1];
+          int neig_cell = ii + jj * n;
+          // Compute dtilde.
+          dtilde = ( 2.0 * D[g] * D[g] ) / ( h * D[g] + h * D[g] );
+          // Compute and set the off-diagonal matrix value.
+          T val = - dtilde / h;
+          int neig_row = neig_cell + g * n * n;
+          A->add_single(row, neig_row, val);
+        }
+        // Compute leakage coefficient for this cell and surface.
+        jo[leak] = dtilde;
+      } // leak loop
+      // Net leakage coefficient.
+      T jnet = (jo[1] + jo[0]) / h + (jo[3] + jo[2]) / h ;
+
+     // Compute and set the diagonal matrix value.
+     T val = jnet + sigma_r[g];
+     A->add_single(row, row, val);
+     // Add downscatter component.
+     if (g == 1)
+     {
+       int col = cell;
+       T val = -sigma_s21;
+       A->add_single(row, col, val);
+     }
+
+    } // row loop
+
+  } // group loop
+
   A->assemble();
   return A;
 }

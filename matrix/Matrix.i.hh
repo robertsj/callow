@@ -17,7 +17,6 @@
 #include <string>
 #include <sstream>
 
-
 namespace callow
 {
 
@@ -125,6 +124,12 @@ inline void Matrix<T>::preallocate(const int nnz_per_row)
   Require(nnz_per_row <= d_m);
   // total nonzeros
   d_total_nnz = nnz_per_row * d_m;
+
+  d_i.resize(d_total_nnz, 0);
+  d_j.resize(d_total_nnz, 0);
+  d_v.resize(d_total_nnz, 0);
+  d_counter = 0;
+
   d_nnz_per_row = new int[d_m];
   for (int i = 0; i < d_m; i++) d_nnz_per_row[i] = nnz_per_row;
   preallocate();

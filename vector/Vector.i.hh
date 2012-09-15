@@ -95,6 +95,7 @@ inline T Vector<T>::dot(const Vector<T>& x)
   T val = 0;
   for (int i = 0; i < d_size; i++)
     val += d_value[i] * x[i];
+  return val;
 }
 
 template <class T>
