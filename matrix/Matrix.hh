@@ -31,17 +31,22 @@ namespace callow
  * column indices  = [0 3 1 3 0 0 1 3]
  * row pointers    = [0 2 4 5 8]
  *
- * We're keeping this simple.  The user can define the number
- * of nonzeros for each row using one value per row or a
- * specific value for each row.  The size CANNOT change after.
+ * We're keeping this simple to use.  The user must provide
+ * the number of nonzeros for the matrix.  The actual number
+ * can be less than this, but no more (unless we implement
+ * a size increase mechanism later)
  *
- * Inserting values can be done one at a time, by row, or by
- * inserting three arrays representing the csr format
+ * During the construction process,
+ * a COO (row, column, value) format is used.
+ * This allows the user to add entries
+ * one at a time, a row at a time, a column at a time, or
+ * several rcv triples at a time. At the construction process,
+ * the  storage is streamlined into CSR format, ensuring that
+ * entries are stored by row and column and that a diagonal
+ * entry exists.  That latter is required for things like
+ * the \ref Jacobi or \ref GaussSeidel solvers, along with
+ * certain preconditioner types.
  *
- * WARNING: For now, this really simple implementation assumes
- *          that entries are entered in increasing column order.
- *
- *          Also, it assumes that the diagonal entry exists.
  */
 template <class T>
 class Matrix: public MatrixBase<T>
@@ -54,49 +59,57 @@ public:
   //---------------------------------------------------------------------------//
 
   typedef SP<Matrix<T> >  SP_matrix;
+  typedef struct{ int i; int j; T v;} triplet;
 
   //---------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
   //---------------------------------------------------------------------------//
 
+  // construction with deferred sizing and allocation
   Matrix();
+  // construction with sizing but deferred allocation
   Matrix(const int m, const int n);
-  Matrix(const int m, const int n, const int nnz_per_row);
-  Matrix(const int m, const int n, int* nnz_per_row);
+  // construction with sizing and allocation
+  Matrix(const int m, const int n, const int nnz);
+  // destructor
   virtual ~Matrix();
 
   //---------------------------------------------------------------------------//
   // PUBLIC FUNCTIONS
   //---------------------------------------------------------------------------//
 
-  // create memory; sizes must be set first
-  void preallocate(const int nnz_per_row);
-  void preallocate(int* nnz_per_row);
-
-  // adding
-  void add_single(int  i, int  j, T  v);
-  void add_row(int i, int *j, T *v, int n = 0);
-  void add_csr(int *i, int *j, T *v);
-
-  // inquiry
+  /// create memory; sizes must be set first
+  void preallocate(const int nnz);
+  /// add one value (return false if can't add)
+  bool insert(int  i, int  j, T  v);
+  /// add n values to a row  (return false if can't add)
+  bool insert(int  i, int *j, T *v, int n);
+  /// add n values to a column  (return false if can't add)
+  bool insert(int *i, int  j, T *v, int n);
+  /// add n triplets  (return false if can't add)
+  bool insert(int *i, int *j, T *v, int n);
+  /// number of rows
   int number_rows() const { return d_m; }
+  /// number of columns
   int number_columns() const { return d_n; }
-  int number_nonzeros() const { return d_total_nnz; }
-
+  /// number of nonzeros
+  int number_nonzeros() const { return d_nnz; }
+  /// starting index for a row
   int start(const int i) const;
+  /// diagonal index for a row
   int diagonal(const int i) const;
+  /// ending index for a row
   int end(const int i) const ;
+  /// column index from cardinal index
   int column(const int p) const;
+  /// value at a cardinal index
   T   operator[](const int p) const;
-
-  // access to elements. returns 0 if ij not nonzero.
+  /// value at ij and returns 0 if not present
   T operator()(const int i, const int j) const;
-
-  // get underlying storage and indexing. careful.
+  // get underlying storage and indexing. careful!
   T* value() {return d_value;}
   int* column_indices() {return d_column_indices;}
   int* row_pointer() {return d_row_pointers;}
-
   // is memory allocated?
   bool allocated() const { return d_allocated; }
 
@@ -131,21 +144,15 @@ private:
   int* d_column_indices;
   /// row pointers
   int* d_row_pointers;
-
-  /// total number of nonzeros
-  int d_total_nnz;
-  /// number per row
-  int* d_nnz_per_row;
-  /// count per row. this makes sure we don't add more than we allocated.
-  int* d_count_per_row;
+  /// pointer to diagonal index of each row
   int* d_diagonal;
+  /// number of nonzeros
+  int d_nnz;
   /// are we allocated?
   bool d_allocated;
-
   // temporaries
-  std::vector<int> d_i;
-  std::vector<int> d_j;
-  std::vector<T>   d_v;
+  triplet* d_aij;
+  // counts entries added
   int d_counter;
 
   //---------------------------------------------------------------------------//
@@ -154,11 +161,8 @@ private:
 
   /// internal preallocation
   void preallocate();
-  /// nnz per row i
-  int nnz(const int i) const;
-  /// total nnz
-  int nnz() const;
-
+  /// sort portion of triplets
+  void sort_triplets(triplet* aij, const int n, bool flag=true);
 
 };
 

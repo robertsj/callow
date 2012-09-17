@@ -218,9 +218,14 @@ void Vector<T>::display() const
   printf(" Vector \n");
   printf(" ---------------------------\n");
   printf("      number rows = %5i \n\n", d_size);
+  if (d_size > 20)
+  {
+    printf("  *** vector not printed for size > 20 *** ");
+    return;
+  }
   for (int i = 0; i < d_size; i++)
   {
-    printf(" row  %5i | %12.10e \n", i, d_value[i]);
+    printf(" row  %3i | %13.6e \n", i, d_value[i]);
   }
   printf("\n");
 }

@@ -37,33 +37,32 @@ int test_Matrix(int argc, char *argv[])
 
   // n * n
   {
-    int n = 5;
-
     // Create test matrix
+    int n = 5;
     Mat A(n, n);
     TEST(A.number_rows()    == n);
     TEST(A.number_columns() == n);
-    A.preallocate(3);
+    A.preallocate(n*3);
 
-    for (int row = 0; row < n; row++)
+    for (int row = n - 1; row >= 0; row--)
     {
       if (row == 0)
       {
         int c[] = {0, 1};
         double v[] = {-2, 1.1};
-        A.add_row(row, c, v, 2);
+        A.insert(row, c, v, 2);
       }
       else if (row == A.number_rows() - 1)
       {
         int c[] = {A.number_rows() - 2, A.number_rows() - 1, 0};
         double v[] = {1, -2};
-        A.add_row(row, c, v, 2);
+        A.insert(row, c, v, 2);
       }
       else
       {
         int c[] = {row - 1, row, row + 1};
         double v[] = {1, -2, 1.1};
-        A.add_row(row, c, v);
+        A.insert(row, c, v, 3);
       }
     }
     A.assemble();
@@ -123,19 +122,18 @@ int test_Matrix(int argc, char *argv[])
     Mat A(m, n);
     TEST(A.number_rows()    == m);
     TEST(A.number_columns() == n);
-    A.preallocate(3);
-
+    A.preallocate(6);
     /*!
      *  1 2
      *  3 4
      *  5 6
      */
-    A.add_single(0, 0, 1.0);
-    A.add_single(0, 1, 2.0);
-    A.add_single(1, 0, 3.0);
-    A.add_single(1, 1, 4.0);
-    A.add_single(2, 0, 5.0);
-    A.add_single(2, 1, 6.0);
+    A.insert(0, 0, 1.0);
+    A.insert(0, 1, 2.0);
+    A.insert(1, 0, 3.0);
+    A.insert(1, 1, 4.0);
+    A.insert(2, 0, 5.0);
+    A.insert(2, 1, 6.0);
     A.assemble();
 
     // Create two vectors

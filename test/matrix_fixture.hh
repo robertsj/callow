@@ -10,7 +10,7 @@
 #define MATRIX_FIXTURE_HH_
 
 #include "matrix/Matrix.hh"
-
+#include <iostream>
 namespace callow
 {
 
@@ -21,40 +21,31 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
 
   typename Matrix<T>::SP_matrix A;
   A = new Matrix<T>(n, n);
-  A->preallocate(3);
+  A->preallocate(3 * n * n);
 
   double l = -0.20;
   double d = 0.50;
   double u = -0.20;
-//  double l = -1;
-//  double d = 2;
-//  double u = -1;
 
   for (int row = 0; row < n; row++)
   {
     if (row == 0)
     {
-      int c[] =
-      { 0, 1 };
-      double v[] =
-      { d, u };
-      A->add_row(row, c, v, 2);
+      int c[]    = { 0, 1 };
+      double v[] = { d, u };
+      A->insert(row, c, v, 2);
     }
     else if (row == n - 1)
     {
-      int c[] =
-        { n - 2, n - 1 };
-      double v[] =
-        { l, d };
-      A->add_row(row, c, v, 2);
+      int c[]    = { n - 2, n - 1 };
+      double v[] = {     l,     d };
+      A->insert(row, c, v, 2);
     }
     else
     {
-      int c[] =
-        { row - 1, row, row + 1 };
-      double v[] =
-        { l, d, u };
-      A->add_row(row, c, v);
+      int c[]    = { row - 1, row, row + 1 };
+      double v[] = {       l,   d,       u };
+      A->insert(row, c, v, 3);
     }
   }
   A->assemble();
@@ -73,26 +64,30 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
 template <class T>
 typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
 {
+  using std::cout;
+  using std::endl;
 
+  cout << " preallocating... " << endl;
   // total cells = 2 * n * n
   // mesh size   = n * n
   // num group   = 2
   typename Matrix<T>::SP_matrix A;
   int size = 2 * n * n;
   A = new Matrix<T>(size, size);
-  int nnz = 2 * 2 + 2;
+  int nnz = size * (2 * 2 + 2);
   A->preallocate(nnz);
 
   // cell width
   T h = 100.0 / n;
   // diffusion coefficient
-  T D[] = {1.4, 0.5};
+  T D[] = {1.0 / ( 3*0.1890), 1.0 / ( 3*1.4633)};
   // removal cross section
-  T sigma_r[] = {1.0,  0.3};
-  T sigma_s21 = 0.017;
+  T sigma_r[] = {0.1890 - 0.1507,  1.4633-1.4536};
+  T sigma_s21 = 0.0380;
   // boundary condition
   T albedo[] = {1, 0, 1, 0};
 
+  cout << " constructing..." << endl;
   for (int g = 0; g < 2; g++)
   {
     // Loop over all cells.
@@ -102,9 +97,12 @@ typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
       int row = cell + g * n * n;
       // Get the directional indices.
       int i = cell % n;
-      int j = int(std::floor(double(cell % n * n)/double(n)));
+      int j = cell % (n * n);
+      double tmp = std::floor(double(j)/double(n));
+      j = int(tmp);
+      //cout << " row = " << row << " i = " << i << " j = " << j << endl;
       // Direction-specific leakage coefficients.
-      double jo[4] = {0.0, 0.0, 0.0, 0.0};
+      T jo[4] = {0.0, 0.0, 0.0, 0.0};
       // Index arrays to help determine if a cell surface is on the boundary.
       int bound[4] = {i, i, j, j};
       int nxyz[2][2] = {0, n-1, 0, n-1};
@@ -117,14 +115,14 @@ typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
         // Determine the direction, e.g. left (-) vs right (+).
         int dir_idx = 1 - ((leak + 1) % 2);
         // Put i, j, k into an array.  The neighbor indices are a perturbation of this.
-        int neig_idx[3] = {i, j};
+        int neig_idx[2] = {i, j};
         // Determine whether the neighbor is positive (+1) or negative (-1)
         // relative to the surface under consideration, and then decrement
         // the appropriate x, y, or z index.
-        int shift_idx   = -2 * ((leak + 1) % 2) + 1;
+        int shift_idx      = -2 * ((leak + 1) % 2) + 1;
         neig_idx[xyz_idx] += shift_idx;
         // Compute coupling coefficient
-        double dtilde = 0.0;
+        T dtilde = 0.0;
         if (bound[leak] == nxyz[xyz_idx][dir_idx])
         {
           dtilde = ( 2.0 * D[g] * (1.0 - albedo[leak]) ) /
@@ -142,36 +140,39 @@ typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
           // Compute and set the off-diagonal matrix value.
           T val = - dtilde / h;
           int neig_row = neig_cell + g * n * n;
-          A->add_single(row, neig_row, val);
+          A->insert(row, neig_row, val);
         }
         // Compute leakage coefficient for this cell and surface.
-        jo[leak] = dtilde;
+        jo[leak] = (T)shift_idx * dtilde;
       } // leak loop
       // Net leakage coefficient.
-      T jnet = (jo[1] + jo[0]) / h + (jo[3] + jo[2]) / h ;
+      T jnet = (jo[1] - jo[0]) / h + (jo[3] - jo[2]) / h ;
 
      // Compute and set the diagonal matrix value.
      T val = jnet + sigma_r[g];
-     A->add_single(row, row, val);
+     A->insert(row, row, val);
      // Add downscatter component.
      if (g == 1)
      {
        int col = cell;
        T val = -sigma_s21;
-       A->add_single(row, col, val);
+       A->insert(row, col, val);
      }
 
     } // row loop
 
   } // group loop
 
+  cout << " assembling..." << endl;
   A->assemble();
+  cout << " done." << endl;
   return A;
 }
 
 } // end namespace detran
 
-#endif // MATRIX_FIXTURE_HH_ 
+#endif // MATRIX_FIXTURE_HH_
+
 //---------------------------------------------------------------------------//
 //              end of file matrix_fixture.hh
 //---------------------------------------------------------------------------//

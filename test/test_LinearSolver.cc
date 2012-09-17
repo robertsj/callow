@@ -96,12 +96,14 @@ int test_GaussSeidel(int argc, char *argv[])
 
 int test_GMRES(int argc, char *argv[])
 {
-  typename Matrix<double>::SP_matrix A = test_matrix_2<double>(n);
+  typename Matrix<double>::SP_matrix A = test_matrix_2<double>(100);
+//  Vector<double> x(A->number_rows(), 0.0);
+//  Vector<double> b(A->number_rows(), 1.0);
 //  GMRES<double> solver(abstol, reltol, 300, 30);
-//  solver.set_operators(test_matrix_2<double>(n));
+//  solver.set_operators(A);
 //  solver.set_monitor_output(true);
 //  solver.set_monitor_diverge(true);
-  //int status = solver.solve(B, X);
+//  int status = solver.solve(b, x);
 //  GMRES<double> solver2(abstol, reltol, 10, 10 );
 //  solver2.set_operators(test_matrix_1<double>(n));
 //  solver2.set_monitor_output(true);
