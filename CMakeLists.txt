@@ -9,6 +9,8 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 # OPTIONS
 #------------------------------------------------------------------------------#
 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
 # Set the default build type (debug)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING
@@ -17,13 +19,28 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Options for Python bindings. On or Off.
-SET(CALLOW_ENABLE_PYTHON NO CACHE BOOL
+set(CALLOW_ENABLE_PYTHON NO CACHE BOOL
   "Enable Python bindings via SWIG."
 )
 
 # Options for OpenMP directives. On or Off.
-SET(CALLOW_ENABLE_OPENMC NO CACHE BOOL
+set(CALLOW_ENABLE_OPENMC NO CACHE BOOL
   "Enable OpenMP for multithreaded solves."
+)
+
+# Build with PETSc?
+set(CALLOW_ENABLE_PETSC NO CACHE BOOL
+  "Enable PETSc for linear solves."
+)
+
+# Build with SLEPc?
+set(CALLOW_ENABLE_SLEPC NO CACHE BOOL
+  "Enable SLEPc for eigenvalue solves."
+)
+
+# Build with PETSc operations?
+set(CALLOW_ENABLE_PETSC_OPS NO CACHE BOOL
+  "Use PETSc vector and matrix operations where applicable."
 )
 
 # Write config file, install it, and include that directory for all source
@@ -33,6 +50,23 @@ configure_file(${CALLOW_CONFIG_IN} ${CALLOW_CONFIG_OUT})
 include_directories("${PROJECT_BINARY_DIR}/config")
 install(FILES ${PROJECT_BINARY_DIR}/config/callow_config.hh
         DESTINATION include)
+
+#------------------------------------------------------------------------------#
+# EXTERNAL LIBRARIES
+#------------------------------------------------------------------------------#
+
+if(CALLOW_ENABLE_PETSC)
+  find_package(PETSc REQUIRED)
+  include_directories(${PETSC_INCLUDES})
+  add_definitions(${PETSC_DEFINITIONS})
+else()
+  set(CALLOW_ENABLE_PETSC_OPS OFF)
+endif()
+
+if(CALLOW_ENABLE_SLEPC)
+  find_package(SLEPc REQUIRED)
+  include_directories(${SLEPC_INCLUDES})
+endif()
 
 #------------------------------------------------------------------------------#
 # SOURCE
@@ -75,6 +109,11 @@ ADD_LIBRARY(callow
             ${MATRIX_SRC}
             ${SOLVER_SRC}
 )
+TARGET_LINK_LIBRARIES(callow 
+                      ${PETSC_LIBRARIES}
+                      ${SLEPC_LIBRARIES}  
+)
+
 #ADD_LIBRARY(callow_static
 #            STATIC
 #            ${SRC} 
@@ -103,21 +142,42 @@ message("++++ Build type:  ${CMAKE_BUILD_TYPE}")
 message("++++ Install:     ${CMAKE_INSTALL_PREFIX}")
 
 message("---------------------------------------------------------------")
+
 if(CALLOW_ENABLE_PYTHON)
-message("++++ Python:      enabled")
+  message("++++ Python:      enabled")
 else()
-message("++++ Python:      disabled")
+  message("++++ Python:      disabled")
 endif()
+
 if(CALLOW_ENABLE_OPENMP)
-message("++++ OpenMP:      enabled")
+  message("++++ OpenMP:      enabled")
 else()
-message("++++ OpenMP:      disabled")
+  message("++++ OpenMP:      disabled")
 endif()
+
+if(CALLOW_ENABLE_PETSC)
+  message("++++ PETSc:       enabled")
+  if (CALLOW_ENABLE_PETSC_OPS)
+    message("  ++ PETSc ops:   enabled")
+  else()
+    message("  ++ PETSc ops:   disabled")
+  endif()
+else()
+  message("++++ PETSc:       disabled")
+endif()
+
+if(CALLOW_ENABLE_SLEPC)
+  message("++++ SLEPc:       enabled")
+else()
+  message("++++ SLEPc:       disabled")
+endif()
+
 if(CALLOW_ENABLE_TEST )
-message("++++ Testing:     enabled")
+  message("++++ Testing:     enabled")
 else()
-message("++++ Testing:     disabled")
+  message("++++ Testing:     disabled")
 endif()
+
 message("---------------------------------------------------------------")
 
 

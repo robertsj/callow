@@ -1,24 +1,25 @@
 //----------------------------------*-C++-*----------------------------------//
 /*!
- * \file   MatrixBase.hh
+ * \file   MatrixShell.hh
  * \author robertsj
- * \date   Sep 13, 2012
- * \brief  MatrixBase class definition.
+ * \date   Sep 18, 2012
+ * \brief  MatrixShell class definition.
  */
 //---------------------------------------------------------------------------//
 
-#ifndef callow_MATRIXBASE_HH_
-#define callow_MATRIXBASE_HH_
-
-#include "callow_config.hh"
-#include "utils/SP.hh"
-#include "vector/Vector.hh"
+#ifndef callow_MATRIXSHELL_HH_
+#define callow_MATRIXSHELL_HH_
 
 namespace callow
 {
 
+/*!
+ *  \class MatrixShell
+ *  \brief Defines a matrix free operator
+ *
+ */
 template <class T>
-class MatrixBase
+class MatrixShell: public MatrixBase<T>
 {
 
 public:
@@ -27,13 +28,13 @@ public:
   // TYPEDEFS
   //---------------------------------------------------------------------------//
 
-  typedef SP<MatrixBase<T> >    SP_matrix;
+  typedef SP<MatrixShell<T> >    SP_matrix;
 
   //---------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
   //---------------------------------------------------------------------------//
 
-  MatrixBase()
+  MatrixShell()
     : d_m(0)
     , d_n(0)
     , d_sizes_set(false)
@@ -42,7 +43,7 @@ public:
     /* ... */
   }
 
-  MatrixBase(const int m, const int n)
+  MatrixShell(const int m, const int n)
     : d_m(m)
     , d_n(n)
     , d_is_ready(false)
@@ -51,40 +52,29 @@ public:
     d_sizes_set = true;
   }
 
-  virtual ~MatrixBase(){}
-
-  //---------------------------------------------------------------------------//
-  // PUBLIC FUNCTIONS
-  //---------------------------------------------------------------------------//
-
-  void set_size(const int m, const int n)
-  {
-    Require(m > 0 and n > 0);
-    d_m = m;
-    d_n = n;
-    d_sizes_set = true;
-  }
-
-  int number_rows() const { return d_m; }
-  int number_columns() const { return d_n; }
-  bool is_ready() const { return d_is_ready; }
-
-#ifdef CALLOW_ENABLE_PETSC
-  Mat petsc_matrix() {return d_petsc_matrix;}
-#endif
+  virtual ~MatrixShell(){}
 
   //---------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL MATRICES MUST IMPLEMENT
   //---------------------------------------------------------------------------//
 
-  // postprocess storage
-  virtual void assemble() = 0;
-  // action y <-- A * x
+  // default shell assemble does nothing
+  void assemble()
+  {
+    /* ... */
+  }
+  // default shell display gives just the sizes
+  void display() const
+  {
+    std::cout << "MatrixShell:" << std::endl
+              << "  # rows = " << d_m << std::endl
+              << "  # cols = " << d_n << std::endl
+              << std::endl;
+  }
+  // the client must implement the action y <-- A * x
   virtual void multiply(const Vector<T> &x,  Vector<T> &y) = 0;
-  // action y <-- A' * x
+  // the client must implement the action y <-- A' * x
   virtual void multiply_transpose(const Vector<T> &x, Vector<T> &y) = 0;
-  // pretty print to screen
-  virtual void display() const = 0;
 
 protected:
 
@@ -100,14 +90,10 @@ protected:
   bool d_sizes_set;
   /// am i good to go?
   bool d_is_ready;
-
-#ifdef CALLOW_ENABLE_PETSC
-  Mat d_petsc_matrix;
-#endif
-
 };
 
 
 } // end namespace callow
 
-#endif /* callow_MATRIXBASE_HH_ */
+
+#endif /* callow_MATRIXSHELL_HH_ */

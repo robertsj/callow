@@ -17,6 +17,18 @@
 
 // External Libraries
 #cmakedefine CALLOW_ENABLE_OPENMP
+#cmakedefine CALLOW_ENABLE_PETSC
+#cmakedefine CALLOW_ENABLE_SLEPC
+// if petsc is enabled, optionally use its matrix and vector operations
+#cmakedefine CALLOW_ENABLE_PETSC_OPS
+
+#ifdef CALLOW_ENABLE_PETSC
+#include "petsc.h"
+#endif
+
+#ifdef CALLOW_ENABLE_SLEPC
+#include "slepc.h"
+#endif
 
 #endif // CALLOW_CONFIG_HH_ 
 

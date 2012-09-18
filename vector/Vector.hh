@@ -10,6 +10,7 @@
 #ifndef callow_VECTOR_HH_
 #define callow_VECTOR_HH_
 
+#include "callow_config.hh"
 #include "utils/SP.hh"
 
 namespace callow
@@ -49,6 +50,7 @@ public:
   Vector();
   Vector(const int n, T v = 0);
   Vector(const Vector &x);
+  Vector(Vector &x);
   virtual ~Vector();
   void resize(const int n);
 
@@ -58,6 +60,9 @@ public:
 
   const T& operator[](const int i) const;
   T& operator[](const int i);
+#ifdef CALLOW_ENABLE_PETSC
+  Vec petsc_vector() {return d_petsc_vector;}
+#endif
 
   //---------------------------------------------------------------------------//
   // VECTOR OPERATIONS
@@ -93,6 +98,9 @@ protected:
 
   int d_size;
   T* d_value;
+#ifdef CALLOW_ENABLE_PETSC
+  Vec d_petsc_vector;
+#endif
 
 };
 

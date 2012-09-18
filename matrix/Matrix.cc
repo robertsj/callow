@@ -14,9 +14,12 @@ namespace callow
 {
 
 // Instantiations
-//template class Vector<int>;
+#ifdef CALLOW_ENABLE_PETSC
+template class Matrix<PetscScalar>;
+#else
 template class Matrix<float>;
 template class Matrix<double>;
+#endif
 
 } // end namespace callow
 

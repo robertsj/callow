@@ -61,23 +61,20 @@ GMRES<T>::~GMRES()
 template <class T>
 inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 {
-
-  typedef Vector<T> Vec;
-
-  // temporary unknown vector
-  //Vec x(x0);
+ cout << " solving gmres " << endl;
+  typedef Vector<T> Vec_T;
 
   // krylov basis
-  std::vector<Vec>  v(d_restart, Vec(x.size(), 0.0));
+  std::vector<Vec_T>  v(d_restart, Vec_T(x.size(), 0.0));
 
   // residual
-  Vec r(x.size(), 0.0);
+  Vec_T r(x.size(), 0.0);
 
   // vector such that x = V*y
-  Vec y(d_restart, 0.0);
+  Vec_T y(d_restart, 0.0);
 
   // vector such that g(1:k) = R*y --> x = V*inv(R)*g and |g(k+1)| is the residual
-  Vec g(d_restart + 1, 0.0);
+  Vec_T g(d_restart + 1, 0.0);
 
   // initialize c and s
   d_c.set(0.0);
@@ -90,7 +87,6 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   while (!done and iteration < d_maximum_iterations)
   {
     // intialize H
-    //initialize_H();
     for (int i = 0; i < d_restart; i++)
     {
       v[i].set(0.0);
@@ -102,7 +98,7 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     d_A->multiply(x, r);
     r.subtract(b);
     r.scale(-1.0);
-    T rho = r.norm(Vec::L2);
+    T rho = r.norm(Vec_T::L2);
 
     // check initial outer residual
     if (iteration == 0)
@@ -112,7 +108,7 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     }
     else
     {
-      cout << "restarting..." << endl;
+      if (d_monitor_output) cout << "restarting..." << endl;
     }
 
 //    else
@@ -145,7 +141,7 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
         d_H[j][k] = v[k+1].dot(v[j]);
         v[k+1].add_a_times_x(-d_H[j][k], v[j]);
       }
-      d_H[k+1][k] = v[k+1].norm(Vec::L2);
+      d_H[k+1][k] = v[k+1].norm(Vec_T::L2);
       T norm_Av_2 = d_H[k+1][k];
 
       // optional reorthogonalization
@@ -209,8 +205,8 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   d_A->multiply(x, r);
   r.subtract(b);
   r.scale(-1.0);
-  T resid = r.norm(Vec::L2);
-  printf(" final residual norm is actually: %12.8e ", resid);
+  T resid = r.norm(Vec_T::L2);
+  printf(" final residual norm is actually: %12.8e \n", resid);
 
   return;
 

@@ -82,6 +82,7 @@ private:
   using LinearSolver<T>::d_number_iterations;
   using LinearSolver<T>::d_A;
   using LinearSolver<T>::d_P;
+  using LinearSolver<T>::d_monitor_output;
 
   /// maximum size of krylov subspace
   int d_restart;

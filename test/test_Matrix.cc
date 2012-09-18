@@ -13,6 +13,7 @@
 
 #include "TestDriver.hh"
 #include "matrix/Matrix.hh"
+#include "utils/Initialization.hh"
 #include <iostream>
 using std::cout;
 using std::endl;
@@ -22,7 +23,9 @@ using namespace callow;
 
 int main(int argc, char *argv[])
 {
+  callow_initialize(argc, argv);
   RUN(argc, argv);
+  callow_finalize();
 }
 
 //---------------------------------------------------------------------------//
@@ -42,27 +45,27 @@ int test_Matrix(int argc, char *argv[])
     Mat A(n, n);
     TEST(A.number_rows()    == n);
     TEST(A.number_columns() == n);
-    A.preallocate(n*3);
+    A.preallocate(3);
 
     for (int row = n - 1; row >= 0; row--)
     {
       if (row == 0)
       {
-        int c[] = {0, 1};
+        int c[]    = { 0, 1  };
         double v[] = {-2, 1.1};
-        A.insert(row, c, v, 2);
+        TEST(A.insert(row, c, v, 2));
       }
       else if (row == A.number_rows() - 1)
       {
-        int c[] = {A.number_rows() - 2, A.number_rows() - 1, 0};
+        int c[] = {A.number_rows() - 2, A.number_rows() - 1};
         double v[] = {1, -2};
-        A.insert(row, c, v, 2);
+        TEST(A.insert(row, c, v, 2));
       }
       else
       {
         int c[] = {row - 1, row, row + 1};
         double v[] = {1, -2, 1.1};
-        A.insert(row, c, v, 3);
+        TEST(A.insert(row, c, v, 3));
       }
     }
     A.assemble();
@@ -122,7 +125,7 @@ int test_Matrix(int argc, char *argv[])
     Mat A(m, n);
     TEST(A.number_rows()    == m);
     TEST(A.number_columns() == n);
-    A.preallocate(6);
+    A.preallocate(2);
     /*!
      *  1 2
      *  3 4

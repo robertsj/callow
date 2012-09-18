@@ -13,6 +13,7 @@
 
 #include "TestDriver.hh"
 #include "vector/Vector.hh"
+#include "utils/Initialization.hh"
 #include <iostream>
 using std::cout;
 using std::endl;
@@ -22,7 +23,9 @@ using namespace callow;
 
 int main(int argc, char *argv[])
 {
+  callow_initialize(argc, argv);
   RUN(argc, argv);
+  callow_finalize();
 }
 
 //---------------------------------------------------------------------------//

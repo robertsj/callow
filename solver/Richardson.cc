@@ -12,8 +12,13 @@
 namespace callow
 {
 
+// Instantiations
+#ifdef CALLOW_ENABLE_PETSC
+template class Richardson<PetscScalar>;
+#else
 template class Richardson<float>;
 template class Richardson<double>;
+#endif
 
 } // end namespace callow
 

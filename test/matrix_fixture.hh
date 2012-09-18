@@ -21,7 +21,7 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
 
   typename Matrix<T>::SP_matrix A;
   A = new Matrix<T>(n, n);
-  A->preallocate(3 * n * n);
+  A->preallocate(3);
 
   double l = -0.20;
   double d = 0.50;
@@ -49,6 +49,7 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
     }
   }
   A->assemble();
+  A->display();
   return A;
 }
 
@@ -74,8 +75,7 @@ typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
   typename Matrix<T>::SP_matrix A;
   int size = 2 * n * n;
   A = new Matrix<T>(size, size);
-  int nnz = size * (2 * 2 + 2);
-  A->preallocate(nnz);
+  A->preallocate(2*2+2);
 
   // cell width
   T h = 100.0 / n;

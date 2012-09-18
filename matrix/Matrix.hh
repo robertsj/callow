@@ -12,13 +12,48 @@
 
 #include "MatrixBase.hh"
 #include <vector>
+#include <ostream>
 
 namespace callow
 {
 
+/// Structure for storing COO matrix
+template <class T>
+struct triplet
+{
+  int i;
+  int j;
+  T   v;
+  // i, j initialized to -1 to ensure they get sorted out
+  triplet(int ii=-1, int jj=-1, T vv=0.0)
+    : i(ii), j(jj), v(vv)
+  {}
+};
+
+template <class T>
+inline bool compare_triplet(const triplet<T> &x, const triplet<T> &y)
+{
+  // leave -1's on the right
+  if (x.j == -1) return false;
+  if (y.j == -1) return true;
+  // otherwise, order from low to high j
+  return x.j < y.j;
+}
+
+template <class T>
+inline std::ostream& operator<< (std::ostream &out, triplet<T> s)
+{
+  out << "(i = " << s.i << ", j = " << s.j << ", v = " << s.v << ")";
+  return out;
+}
+
 /*!
  *  \class Matrix
  *  \brief CRS matrix
+ *
+ * This is the base matrix class used within callow.  It implements
+ * a compressed row storage (CRS) matrix.  An example of what this
+ * means is as follows.
  *
  *  Example:
  *
@@ -31,10 +66,25 @@ namespace callow
  * column indices  = [0 3 1 3 0 0 1 3]
  * row pointers    = [0 2 4 5 8]
  *
- * We're keeping this simple to use.  The user must provide
- * the number of nonzeros for the matrix.  The actual number
- * can be less than this, but no more (unless we implement
- * a size increase mechanism later)
+ * We're keeping this simple to use.  The use must specify
+ * the number of nonzero entries per row, either via one
+ * value applied to all rows or an array of values for
+ * each row.  The reason the row storage is needed rather
+ * than say the total number of nonzero entries is to make
+ * construction easier.  During construction, the matrix
+ * is stored (temporarily) in coordinate (COO) format, i.e.
+ * a list of (i, j, value) triplets.  If this were stored
+ * in one monolithic array, the construction of the CSR
+ * structure would require we sort all the triplets by
+ * row and then by column (since we want explicit access
+ * to L, D, and U).  Initial testing proved that sorting
+ * is just too time consuming, even with an n*log(n) method
+ * like quicksort.
+ *
+ * Consequently, we do keep (i, j, value) triplets, but they
+ * are stored by row, and to store by row, we need an initial
+ * guess of how many entries there are.  For now, the size
+ * can not be increased, but that would not be too difficult.
  *
  * During the construction process,
  * a COO (row, column, value) format is used.
@@ -59,7 +109,7 @@ public:
   //---------------------------------------------------------------------------//
 
   typedef SP<Matrix<T> >  SP_matrix;
-  typedef struct{ int i; int j; T v;} triplet;
+  typedef triplet<T>      triplet_T;
 
   //---------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
@@ -78,8 +128,9 @@ public:
   // PUBLIC FUNCTIONS
   //---------------------------------------------------------------------------//
 
-  /// create memory; sizes must be set first
-  void preallocate(const int nnz);
+  /// allocate memory.
+  void preallocate(const int nnz_row);
+  void preallocate(int *nnz_rows);
   /// add one value (return false if can't add)
   bool insert(int  i, int  j, T  v);
   /// add n values to a row  (return false if can't add)
@@ -114,7 +165,7 @@ public:
   bool allocated() const { return d_allocated; }
 
   //---------------------------------------------------------------------------//
-  // ABSTRACT INTERFACE -- ALL MATRIX OBJECTS MUST IMPLEMENT THESE
+  // ABSTRACT INTERFACE -- ALL MATRICES MUST IMPLEMENT
   //---------------------------------------------------------------------------//
 
   // postprocess storage
@@ -138,6 +189,9 @@ private:
   using MatrixBase<T>::d_sizes_set;
   using MatrixBase<T>::d_is_ready;
 
+#ifdef CALLOW_ENABLE_PETSC
+  using MatrixBase<T>::d_petsc_matrix;
+#endif
   /// matrix elements
   T* d_value;
   /// column indices
@@ -150,10 +204,10 @@ private:
   int d_nnz;
   /// are we allocated?
   bool d_allocated;
-  // temporaries
-  triplet* d_aij;
-  // counts entries added
-  int d_counter;
+  // temporaries [number of rows][nonzeros per row]
+  std::vector<std::vector<triplet_T> > d_aij;
+  // counts entries added per row
+  std::vector<int> d_counter;
 
   //---------------------------------------------------------------------------//
   // IMPLEMENTATION
@@ -161,10 +215,10 @@ private:
 
   /// internal preallocation
   void preallocate();
-  /// sort portion of triplets
-  void sort_triplets(triplet* aij, const int n, bool flag=true);
 
 };
+
+
 
 } // end namespace callow
 

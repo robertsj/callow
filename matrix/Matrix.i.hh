@@ -40,11 +40,11 @@ Matrix<T>::Matrix(const int m, const int n)
 }
 
 template <class T>
-Matrix<T>::Matrix(const int m, const int n, const int nnz)
+Matrix<T>::Matrix(const int m, const int n, const int nnzrow)
   : MatrixBase<T>(m, n)
   , d_allocated(false)
 {
-  preallocate(nnz);
+  preallocate(nnzrow);
 }
 
 template <class T>
@@ -52,6 +52,11 @@ Matrix<T>::~Matrix()
 {
   if (d_is_ready)
   {
+#ifdef CALLOW_ENABLE_PETSC
+    // destroy the petsc matrix.  note, since we constructed it
+    // using our own arrays, those still need to be deleted.
+    MatDestroy(&d_petsc_matrix);
+#endif
     delete [] d_value;
     delete [] d_column_indices;
     delete [] d_row_pointers;
@@ -64,22 +69,32 @@ Matrix<T>::~Matrix()
 //---------------------------------------------------------------------------//
 
 template <class T>
-inline void Matrix<T>::preallocate(const int nnz)
+inline void Matrix<T>::preallocate(const int nnzrow)
 {
   // preconditions
   Require(d_sizes_set);
   Require(!d_allocated);
-  Require(nnz > 0);
+  Require(nnzrow > 0);
   // set number of nonzeros, preallocate triplets, and initialize counter
-  d_nnz = nnz;
-  d_aij = new triplet[nnz];
-  for (int i = 0; i < nnz; i++)
+  d_aij.resize(d_m, std::vector<triplet_T>(nnzrow));
+  d_counter.resize(d_m, 0);
+  d_allocated = true;
+}
+
+template <class T>
+inline void Matrix<T>::preallocate(int* nnzrows)
+{
+  // preconditions
+  Require(d_sizes_set);
+  Require(!d_allocated);
+  // set number of nonzeros, preallocate triplets, and initialize counter
+  d_aij.resize(d_m);
+  for (int i = 0; i < d_m; i++)
   {
-    d_aij[i].i = 0;
-    d_aij[i].j = 0;
-    d_aij[i].v = 0.0;
+    Require(nnzrows[i] >= 0);
+    d_aij[i].resize(nnzrows[i]);
   }
-  d_counter = 0;
+  d_counter.resize(d_m, 0);
   d_allocated = true;
 }
 
@@ -102,37 +117,48 @@ inline void Matrix<T>::assemble()
   Require(!d_is_ready);
   Require(d_allocated);
 
-  // sort the triplets by row
-  std::cout << " sorting rows..." << std::endl;
-  sort_triplets(d_aij, d_counter);
+  typedef typename std::vector<triplet_T>::iterator it_T;
 
-  // sort within row by column
-  std::cout << " sorting cols..." << std::endl;
-  int row_s = 0;
-  int row_e = 0;
+  // sort the coo structure
+  d_nnz = 0;
   for (int i = 0; i < d_m; i++)
   {
-    bool diag = false;
-    row_e = row_s;
-    Assert(row_e < d_nnz);
-    while (d_aij[row_e].i == i)
-    {
-      // if we find a diagonal entry or it shouldn't exist, set it to true
-      if (d_aij[row_e].j == i or i >= d_n) diag = true;
-      // don't save the zero
-      if (d_aij[row_e].v == 0.0) d_counter--;
-      if (++row_e == d_nnz) break;
-    }
-    // add entry for diagonal, even if zero.
-    if (!diag) d_counter++;
-    // sort this row (pointer, count, flag for column)
-    sort_triplets(&d_aij[row_s], row_e-row_s, false);
-    row_s = row_e;
+//    std::cout << " before sort" << std::endl;
+//    for (int j = 0; j < d_aij[i].size(); ++j)
+//      std::cout << d_aij[i][j] << std::endl;
+
+    // do the sort
+    std::sort(d_aij[i].begin(), d_aij[i].end(), compare_triplet<T>);
+
+//    std::cout << " after sort" << std::endl;
+//    for (int j = 0; j < d_aij[i].size(); ++j)
+//      std::cout << d_aij[i][j] << std::endl;
+
+    // remove empty entries (if not entered, i,j==-1)
+    while ( (d_aij[i].end()-1)->j == -1 ) d_aij[i].pop_back();
+
+//    std::cout << " after pop" << std::endl;
+//    for (int j = 0; j < d_aij[i].size(); ++j)
+//      std::cout << d_aij[i][j] << std::endl;
+
+    // find and/or insert the diagonal
+    int j = 0;
+    for (int k = 0; k < d_aij[i].size(); ++k)
+      if (d_aij[i][k].j <= d_aij[i][k].i) ++j;
+    if (j) --j;
+    if (d_aij[i][j].i != d_aij[i][j].j and i < d_n)
+      d_aij[i].insert(d_aij[i].begin()+j, triplet_T(i, i, 0.0));
+
+
+//    std::cout << " after diag" << std::endl;
+//    for (int j = 0; j < d_aij[i].size(); ++j)
+//      std::cout << d_aij[i][j] << std::endl;
+
+    // update the total nonzero count
+    d_nnz += d_aij[i].size();
   }
-  std::cout << " creating csr..." << std::endl;
 
   // allocate
-  d_nnz            = d_counter;
   d_row_pointers   = new int[d_m + 1];
   d_column_indices = new int[d_nnz];
   d_value          = new T[d_nnz];
@@ -142,109 +168,35 @@ inline void Matrix<T>::assemble()
   int aij_idx = 0;
   int val_idx = 0;
   d_row_pointers[0] = 0;
+
+  // pointer to value index
+  int p = 0;
+  // for all rows
   for (int i = 0; i < d_m; i++)
   {
-    bool diag = false;
-    int row_count = 0;
-    while (d_aij[aij_idx].i == i)
+    // for all columns in the row
+    for (int j = 0; j < d_aij[i].size(); ++j, ++p)
     {
-      Assert(val_idx < d_nnz);
-      // lower diagonal
-      if (d_aij[aij_idx].j < i)
-      {
-        d_value[val_idx] = d_aij[aij_idx].v;
-        d_column_indices[val_idx] = d_aij[aij_idx].j;
-      }
-      // diagonal, if present
-      else if (d_aij[aij_idx].j == i)
-      {
-        d_value[val_idx] = d_aij[aij_idx].v;
-        d_column_indices[val_idx] = d_aij[aij_idx].j;
-        d_diagonal[i] = val_idx;
-        diag = true;
-      }
-      // upper diagonal
-      else
-      {
-        // add diagonal if it wasn't done and it should exist on this row
-        if (!diag and i < d_n)
-        {
-          d_value[val_idx] = 0.0;
-          d_column_indices[val_idx] = i;
-          d_diagonal[i] = val_idx;
-          diag = true;
-          ++val_idx;
-        }
-        Assert(val_idx < d_nnz);
-        d_value[val_idx] = d_aij[aij_idx].v;
-        d_column_indices[val_idx] = d_aij[aij_idx].j;
-      }
-      ++val_idx;
-      ++aij_idx;
-      ++row_count;
-      if (aij_idx >= d_counter) break;
+      d_column_indices[p] = d_aij[i][j].j;
+      d_value[p] = d_aij[i][j].v;
+      // store diagonal index
+      if (d_column_indices[p] == i) d_diagonal[i] = p;
     }
-    d_row_pointers[i + 1] = row_count + d_row_pointers[i];
+    d_row_pointers[i + 1] = p;
+    // delete this row of coo storage
+    d_aij[i].clear();
   }
   // delete the coo storage and specify the matrix is set to use
-  delete [] d_aij;
+  d_aij.clear();
+
+#ifdef CALLOW_ENABLE_PETSC
+  PetscErrorCode ierr;
+  ierr = MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, d_m, d_n,
+                                   d_row_pointers, d_column_indices,
+                                   d_value, &d_petsc_matrix);
+  Assert(!ierr);
+#endif
   d_is_ready = true;
-}
-
-template <class T>
-inline void Matrix<T>::sort_triplets(triplet* aij, const int n, bool flag)
-{
-  const int MAX_LEVELS = 300;
-  triplet piv;
-  int beg[MAX_LEVELS];
-  int end[MAX_LEVELS];
-  int i = 0, L, R, swap;
-  beg[0] = 0;
-  end[0] = n;
-  while (i >= 0)
-  {
-    L = beg[i];
-    R = end[i] - 1;
-    if (L < R)
-    {
-      piv = aij[L];
-      while (L < R)
-      {
-        if (flag) // by row
-        {
-          while (aij[R].i >= piv.i && L < R) R--;
-          if (L < R) aij[L++] = aij[R];
-          while (aij[L].i <= piv.i && L < R) L++;
-          if (L < R) aij[R--] = aij[L];
-        }
-        else // by column
-        {
-          while (aij[R].j >= piv.j && L < R) R--;
-          if (L < R) aij[L++] = aij[R];
-          while (aij[L].j <= piv.j && L < R) L++;
-          if (L < R) aij[R--] = aij[L];
-        }
-      }
-      aij[L    ] = piv;
-      beg[i + 1] = L + 1;
-      end[i + 1] = end[i];
-      end[i++  ] = L;
-      if (end[i] - beg[i] > end[i - 1] - beg[i - 1])
-      {
-        swap       = beg[i];
-        beg[i    ] = beg[i - 1];
-        beg[i - 1] = swap;
-        swap       = end[i];
-        end[i    ] = end[i - 1];
-        end[i - 1] = swap;
-      }
-    }
-    else
-    {
-      i--;
-    }
-  }
-
 }
 
 //---------------------------------------------------------------------------//
@@ -301,13 +253,20 @@ inline T Matrix<T>::operator()(const int i, const int j) const
   Require(i >= 0 and i < d_m);
   Require(j >= 0 and j < d_n);
   // loop through elements in this row
-  for (int k = d_row_pointers[i]; k < d_row_pointers[i + 1]; k++)
+  if (i == j)
+    return d_value[d_diagonal[i]];
+  else if (i < j)
   {
-    // if j is a column index, return the value
-    if (d_column_indices[k] == j) return d_value[k];
+    for (int k = d_row_pointers[i]; k < d_diagonal[i]; k++)
+      if (d_column_indices[k] == j) return d_value[k];
+  }
+  else
+  {
+    for (int k = d_diagonal[i] + 1; k < d_row_pointers[i + 1]; k++)
+      if (d_column_indices[k] == j) return d_value[k];
   }
   // otherwise, this is a zeros
-  return 0;
+  return 0.0;
 }
 
 //---------------------------------------------------------------------------//
@@ -320,6 +279,9 @@ inline void Matrix<T>::multiply(const Vector<T> &x, Vector<T> &y)
   Require(d_is_ready);
   Require(x.size() == d_n);
   Require(y.size() == d_m);
+#ifdef CALLOW_ENABLE_PETSC_OPS
+  MatMult(d_petsc_matrix, const_cast<Vector<T>* >(&x)->petsc_vector(), y.petsc_vector());
+#else
   // clear the output vector
   y.scale(0);
   // row pointer
@@ -337,6 +299,7 @@ inline void Matrix<T>::multiply(const Vector<T> &x, Vector<T> &y)
     }
     y[i] = temp;
   }
+#endif
 }
 
 // \todo good threading option needed
@@ -346,6 +309,9 @@ inline void Matrix<T>::multiply_transpose(const Vector<T> &x, Vector<T> &y)
   Require(d_is_ready);
   Require(x.size() == d_m);
   Require(y.size() == d_n);
+#ifdef CALLOW_ENABLE_PETSC_OPS
+  MatMultTranspose(d_petsc_matrix, const_cast<Vector<T>* >(&x)->petsc_vector(), y.petsc_vector());
+#else
   // clear the output vector
   y.scale(0);
   // for all rows (now columns)
@@ -358,6 +324,7 @@ inline void Matrix<T>::multiply_transpose(const Vector<T> &x, Vector<T> &y)
       y[j] += x[i] * d_value[p];
     }
   }
+#endif
 }
 
 //---------------------------------------------------------------------------//
@@ -372,12 +339,12 @@ inline bool Matrix<T>::insert(int i, int j, T v)
   Require(i >= 0 and i < d_m);
   Require(j >= 0 and j < d_n);
   // return if storage unavailable
-  if (d_counter >= d_nnz) return false;
+  if (d_counter[i] >= d_aij[i].size()) return false;
   // otherwise, add the entry
-  d_aij[d_counter].i = i;
-  d_aij[d_counter].j = j;
-  d_aij[d_counter].v = v;
-  ++d_counter;
+  d_aij[i][d_counter[i]].i = i;
+  d_aij[i][d_counter[i]].j = j;
+  d_aij[i][d_counter[i]].v = v;
+  ++d_counter[i];
   return true;
 }
 
@@ -388,15 +355,16 @@ inline bool Matrix<T>::insert(int i, int *j, T *v, int n)
   Require(d_allocated);
   Require(i >= 0 and i < d_m);
   // return if storage unavailable
-  if (d_counter + n >= d_nnz) return false;
+  //std::cout << " i = " << i << " count = " << d_counter[i] << " n = " << n << " size = " << d_aij[i].size() << std::endl;
+  if (d_counter[i] + n >  d_aij[i].size()) return false;
   // otherwise, add the entries
   for (int jj = 0; jj < n; ++jj)
   {
     Require(j[jj] >= 0 and j[jj] < d_n);
-    d_aij[d_counter].i = i;
-    d_aij[d_counter].j = j[jj];
-    d_aij[d_counter].v = v[jj];
-    ++d_counter;
+    d_aij[i][d_counter[i]].i = i;
+    d_aij[i][d_counter[i]].j = j[jj];
+    d_aij[i][d_counter[i]].v = v[jj];
+    ++d_counter[i];
   }
   return true;
 }
@@ -408,15 +376,19 @@ inline bool Matrix<T>::insert(int *i, int j, T *v, int n)
   Require(d_allocated);
   Require(j >= 0 and j < d_n);
   // return if storage unavailable
-  if (d_counter + n >= d_nnz) return false;
-  // otherwise, add the entries
   for (int ii = 0; ii < n; ++ii)
   {
     Require(i[ii] >= 0 and i[ii] < d_m);
-    d_aij[d_counter].i = i[ii];
-    d_aij[d_counter].j = j;
-    d_aij[d_counter].v = v[ii];
-    ++d_counter;
+    if (d_counter[i[ii]] + 1 > d_aij[i[ii]].size())
+      return false;
+  }
+  // otherwise, add the entries
+  for (int ii = 0; ii < n; ++ii)
+  {
+    d_aij[i[ii]][d_counter[i[ii]]].i = i[ii];
+    d_aij[i[ii]][d_counter[i[ii]]].j = j;
+    d_aij[i[ii]][d_counter[i[ii]]].v = v[ii];
+    ++d_counter[i[ii]];
   }
   return true;
 }
@@ -427,16 +399,21 @@ inline bool Matrix<T>::insert(int *i, int *j, T *v, int n)
   Require(!d_is_ready);
   Require(d_allocated);
   // return if storage unavailable
-  if (d_counter + n >= d_nnz) return false;
-  // otherwise, add the entries
+  // \todo this assumes one entry per row---fix
   for (int k = 0; k < n; ++k)
   {
     Require(i[k] >= 0 and i[k] < d_m);
     Require(j[k] >= 0 and j[k] < d_n);
-    d_aij[d_counter].i = i[k];
-    d_aij[d_counter].j = j[k];
-    d_aij[d_counter].v = v[k];
-    ++d_counter;
+    if (d_counter[i[k]] + 1 > d_aij[i[k]].size())
+      return false;
+  }
+  // otherwise, add the entries
+  for (int k = 0; k < n; ++k)
+  {
+    d_aij[i[k]][d_counter[i[k]]].i = i[k];
+    d_aij[i[k]][d_counter[i[k]]].j = j[k];
+    d_aij[i[k]][d_counter[i[k]]].v = v[k];
+    ++d_counter[i[k]];
   }
   return true;
 }

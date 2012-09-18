@@ -10,6 +10,7 @@
 #ifndef LINEARSOLVER_HH_
 #define LINEARSOLVER_HH_
 
+#include "callow_config.hh"
 #include "matrix/MatrixBase.hh"
 #include "utils/SP.hh"
 #include <cstdio>
