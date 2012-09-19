@@ -121,6 +121,8 @@ public:
   Matrix(const int m, const int n);
   // construction with sizing and allocation
   Matrix(const int m, const int n, const int nnz);
+  // copy constructor
+  Matrix(Matrix<T> &A);
   // destructor
   virtual ~Matrix();
 
@@ -128,8 +130,9 @@ public:
   // PUBLIC FUNCTIONS
   //---------------------------------------------------------------------------//
 
-  /// allocate memory.
+  /// allocate using constant row size
   void preallocate(const int nnz_row);
+  /// allocate using variable row size
   void preallocate(int *nnz_rows);
   /// add one value (return false if can't add)
   bool insert(int  i, int  j, T  v);
@@ -139,10 +142,6 @@ public:
   bool insert(int *i, int  j, T *v, int n);
   /// add n triplets  (return false if can't add)
   bool insert(int *i, int *j, T *v, int n);
-  /// number of rows
-  int number_rows() const { return d_m; }
-  /// number of columns
-  int number_columns() const { return d_n; }
   /// number of nonzeros
   int number_nonzeros() const { return d_nnz; }
   /// starting index for a row
@@ -161,8 +160,9 @@ public:
   T* value() {return d_value;}
   int* column_indices() {return d_column_indices;}
   int* row_pointer() {return d_row_pointers;}
+  int* diagonal_indices() {return d_diagonal;}
   // is memory allocated?
-  bool allocated() const { return d_allocated; }
+  bool allocated() const {return d_allocated;}
 
   //---------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL MATRICES MUST IMPLEMENT

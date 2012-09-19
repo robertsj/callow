@@ -17,6 +17,15 @@ namespace callow
  *  \class MatrixShell
  *  \brief Defines a matrix free operator
  *
+ *  For many iterative methods, only the action of the operator
+ *  on a vector is required.  Frequently, constructing a matrix
+ *  explicitly is too memory intensive, and so a matrix free
+ *  operator that defines the action is desirable.
+ *
+ *  This class is abstract. The client must define the action of
+ *  the matrix and its transpose (though for the latter, the
+ *  client may simply throw an exception to forbid its use).
+ *
  */
 template <class T>
 class MatrixShell: public MatrixBase<T>
@@ -90,6 +99,7 @@ protected:
   bool d_sizes_set;
   /// am i good to go?
   bool d_is_ready;
+
 };
 
 

@@ -48,6 +48,30 @@ Matrix<T>::Matrix(const int m, const int n, const int nnzrow)
 }
 
 template <class T>
+Matrix<T>::Matrix(Matrix<T> &A)
+  : MatrixBase<T>(A.number_rows(), A.number_columns())
+{
+  d_nnz = A.number_nonzeros();
+  d_row_pointers = new int[d_m + 1];
+  d_column_indices = new int[d_nnz];
+  d_value = new T[d_nnz];
+  d_diagonal = new int[d_m];
+  d_row_pointers[0] = 0.0;
+  for (int i = 0; i < d_m; ++i)
+  {
+    d_row_pointers[i+1] = A.row_pointer()[i+1];
+    d_diagonal[i] = A.diagonal_indices()[i];
+  }
+  for (int i = 0; i < d_nnz; ++i)
+  {
+    d_column_indices[i] = A.column_indices()[i+1];
+    d_value[i] = A.value()[i];
+  }
+  d_allocated = true;
+  d_is_ready = true;
+}
+
+template <class T>
 Matrix<T>::~Matrix()
 {
   if (d_is_ready)

@@ -342,7 +342,7 @@ void Vector<T>::display() const
   printf(" Vector \n");
   printf(" ---------------------------\n");
   printf("      number rows = %5i \n\n", d_size);
-  if (d_size > 20)
+  if (d_size > 100)
   {
     printf("  *** vector not printed for size > 20 *** ");
     return;
