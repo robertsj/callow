@@ -12,6 +12,7 @@
 
 #include "callow_config.hh"
 #include "matrix/MatrixBase.hh"
+#include "preconditioner/Preconditioner.hh"
 #include "utils/SP.hh"
 #include <cstdio>
 #include <string>
@@ -83,9 +84,10 @@ public:
   // TYPEDEFS
   //-------------------------------------------------------------------------//
 
-  typedef SP<LinearSolver<T> >                SP_solver;
-  typedef typename MatrixBase<T>::SP_matrix   SP_matrix;
-  typedef typename Vector<T>::SP_vector       SP_vector;
+  typedef SP<LinearSolver<T> >                            SP_solver;
+  typedef typename MatrixBase<T>::SP_matrix               SP_matrix;
+  typedef typename Preconditioner<T>::SP_preconditioner   SP_preconditioner;
+  typedef typename Vector<T>::SP_vector                   SP_vector;
 
   //-------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
@@ -121,11 +123,27 @@ public:
    *  \param A  linear operator
    *  \param P  optional preconditioning process
    */
-  void set_operators(SP_matrix A, SP_matrix P = SP_matrix(0))
+  void set_operators(SP_matrix A,
+                     SP_preconditioner PL = SP_preconditioner(0),
+                     SP_preconditioner PR = SP_preconditioner(0))
   {
     Require(A);
     d_A = A;
     Ensure(d_A->number_rows() == d_A->number_columns());
+    if (PL) d_PL = PL;
+    if (PR) d_PR = PR;
+  }
+
+  void set_left_pc(SP_preconditioner PL)
+  {
+    Require(PL);
+    d_PL = PL;
+  }
+
+  void set_right_pc(SP_preconditioner PR)
+  {
+    Require(PR);
+    d_PR = PR;
   }
 
   /**
@@ -195,7 +213,10 @@ protected:
   std::vector<double> d_LI_residual;
   int    d_number_iterations;
   SP_matrix d_A;
-  SP_matrix d_P;
+  /// left preconditioner
+  SP_preconditioner d_PL;
+  /// right preconditioner
+  SP_preconditioner d_PR;
   bool d_monitor_output;
   bool d_monitor_diverge;
 

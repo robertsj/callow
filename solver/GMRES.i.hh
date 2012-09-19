@@ -61,7 +61,7 @@ GMRES<T>::~GMRES()
 template <class T>
 inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 {
- cout << " solving gmres " << endl;
+
   typedef Vector<T> Vec_T;
 
   // krylov basis
@@ -95,9 +95,17 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     //y.set(0.0);
 
     // compute residual
+    // apply right preconditioner
+    if (d_PR) d_PR->apply(x);
+    // apply operator
     d_A->multiply(x, r);
     r.subtract(b);
-    r.scale(-1.0);
+    r.scale(-1);
+    r.display();
+    // apply left preconditioner
+    if (d_PL) d_PL->apply(r);
+    r.display();
+    //r.scale(-1.0);
     T rho = r.norm(Vec_T::L2);
 
     // check initial outer residual
@@ -110,12 +118,6 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     {
       if (d_monitor_output) cout << "restarting..." << endl;
     }
-
-//    else
-//    {
-//      if (monitor(iteration, rho)) return;
-//    }
-    //iteration++;
 
     // initial krylov vector
     v[0].copy(r);
@@ -133,8 +135,21 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
         break;
       }
 
-      // perform modified gram-schmidt
+      //---------------------------------------------------------------------//
+      // compute v(k+1) <-- inv(P_L)*A*inv(P_R) * v(k)
+      //---------------------------------------------------------------------//
+
+      // right preconditioner
+      if (d_PR) d_PR->apply(v[k]);
+      // apply A
       d_A->multiply(v[k], v[k+1]);
+      // left preconditioner
+      if (d_PL) d_PL->apply(v[k+1]);
+
+      //---------------------------------------------------------------------//
+      // use modified gram-schmidt to orthogonalize v(k+1)
+      //---------------------------------------------------------------------//
+
       T norm_Av = v[k+1].norm();
       for (int j = 0; j <= k; ++j)
       {
@@ -144,8 +159,12 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       d_H[k+1][k] = v[k+1].norm(Vec_T::L2);
       T norm_Av_2 = d_H[k+1][k];
 
+      //---------------------------------------------------------------------//
       // optional reorthogonalization
-      if ( (d_reorthog == 1 and norm_Av + 0.001 * norm_Av_2 == norm_Av) or (d_reorthog == 2) )
+      //---------------------------------------------------------------------//
+
+      if ( (d_reorthog == 1 and norm_Av + 0.001 * norm_Av_2 == norm_Av) or
+           (d_reorthog == 2) )
       {
         cout << " reorthog ... " << endl;
         for (int j = 0; j < k; ++j)
@@ -157,7 +176,9 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
         d_H[k+1][k] = v[k+1].norm();
       }
 
-      // careful of happy break down
+      //---------------------------------------------------------------------//
+      // watch for happy breakdown: if H[k+1][k] == 0, we've solved Ax=b
+      //---------------------------------------------------------------------//
       if (d_H[k+1][k] != 0.0)
       {
         v[k+1].scale(1.0/d_H[k+1][k]);
@@ -168,7 +189,10 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
                     k, iteration);
       }
 
-      // going to triangle form incrementally
+      //---------------------------------------------------------------------//
+      // apply givens rotations to triangularize H on-the-fly (it's neat!)
+      //---------------------------------------------------------------------//
+
       if (k > 0) apply_givens(k);
       double nu = std::sqrt(d_H[k][k]*d_H[k][k] + d_H[k+1][k]*d_H[k+1][k]);
       d_c[k] =  d_H[k  ][k] / nu;
@@ -180,7 +204,10 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       g[k  ] = g_0;
       g[k+1] = g_1;
 
-      // residual
+      //---------------------------------------------------------------------//
+      // monitor the residual and break if done
+      //---------------------------------------------------------------------//
+
       rho = std::abs(g_1);
       if (monitor(iteration, rho))
       {
@@ -190,7 +217,10 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 
     } // end inners
 
-    // compute y
+    //---------------------------------------------------------------------//
+    // update the solution
+    //---------------------------------------------------------------------//
+
     compute_y(y, g, k);
 
     // update x = x0 + v[0]*y[0] + ...
@@ -198,6 +228,8 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     {
       x.add_a_times_x(y[i], v[i]);
     }
+    // \todo this assumes x_0 = 0; otherwise, need x = x_0 + inv(P)*(V*y)
+    if (d_PR) d_PR->apply(x);
 
 
   } // end outers

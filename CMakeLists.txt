@@ -78,10 +78,12 @@ include_directories(utils)
 include_directories(vector)
 include_directories(matrix)
 include_directories(solver)
+include_directories(preconditioner)
 add_subdirectory(utils)
 add_subdirectory(vector)
 add_subdirectory(matrix)
 add_subdirectory(solver)
+add_subdirectory(preconditioner)
 if(CALLOW_ENABLE_PYTHON)
   add_subdirectory(python)
 endif()
@@ -108,6 +110,7 @@ ADD_LIBRARY(callow
             ${VECTOR_SRC}
             ${MATRIX_SRC}
             ${SOLVER_SRC}
+            ${PRECONDITIONER_SRC}
 )
 TARGET_LINK_LIBRARIES(callow 
                       ${PETSC_LIBRARIES}

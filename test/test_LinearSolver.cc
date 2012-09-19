@@ -21,6 +21,8 @@
 #include "solver/Jacobi.hh"
 #include "solver/GaussSeidel.hh"
 #include "solver/GMRES.hh"
+// pc
+#include "preconditioner/PCJacobi.hh"
 //
 #include "test/matrix_fixture.hh"
 #include <iostream>
@@ -99,15 +101,18 @@ int test_GaussSeidel(int argc, char *argv[])
 
 int test_GMRES(int argc, char *argv[])
 {
-  typename Matrix<double>::SP_matrix A = test_matrix_2<double>(300);
+  typename Matrix<double>::SP_matrix A = test_matrix_2<double>(4);
+  typename PCJacobi<double>::SP_preconditioner P(new PCJacobi<double>(A));
+
   cout << A->number_rows() << endl;
 
   GMRES<double> solver(1e-7, 1e-7, 10000, 20);
   solver.set_operators(A);
-  solver.set_monitor_output(false);
-  solver.set_monitor_diverge(true);
+  solver.set_left_pc(P);
+  solver.set_monitor_output(true);
+  //solver.set_monitor_diverge(true);
 
-  Vector<double> X(A->number_rows(), 0.0);
+  Vector<double> X(A->number_rows(), 1.0);
   Vector<double> B(A->number_rows(), 1.0);
   int status = solver.solve(B, X);
 
