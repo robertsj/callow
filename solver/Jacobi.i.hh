@@ -34,7 +34,6 @@ Jacobi<T>::Jacobi(const double  atol,
 // SOLVE
 //---------------------------------------------------------------------------//
 
-
 template <class T>
 inline void Jacobi<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 {
@@ -67,7 +66,7 @@ inline void Jacobi<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     // compute X1 <-- -inv(D)*(L+U)*X0 + inv(D)*b
     //---------------------------------------------------//
 
-    T* a = A->value();
+    T* a = A->values();
     for (int i = 0; i < A->number_rows(); i++)
     {
       T v = 0;

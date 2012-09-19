@@ -80,8 +80,6 @@ protected:
 
 #include "PCILU0.i.hh"
 
-} // end namespace detran
-
 #endif // PCILU0_HH_ 
 
 //---------------------------------------------------------------------------//

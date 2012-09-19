@@ -56,6 +56,8 @@ int test_Vector(int argc, char *argv[])
   cout << val2 << endl;
   TEST(soft_equiv(val, 20.0));
 
+
+
   return 0;
 }
 

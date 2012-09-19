@@ -88,7 +88,15 @@ public:
   //---------------------------------------------------------------------------//
 
   int size() const { return d_size; }
+
+  //---------------------------------------------------------------------------//
+  // IO
+  //---------------------------------------------------------------------------//
+
+  /// pretty print to stdout
   void display() const;
+  /// formatted write to ascii for matlab
+  void print_matlab(std::string filename="vector.out") const;
 
 protected:
 

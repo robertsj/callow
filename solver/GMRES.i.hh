@@ -80,40 +80,36 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   d_c.set(0.0);
   d_s.set(0.0);
 
-  // outers
+  //-------------------------------------------------------------------------//
+  // outer iterations
+  //-------------------------------------------------------------------------//
+
   int iteration = 0;
   bool done = false;
-  // each iteration is an action of A
   while (!done and iteration < d_maximum_iterations)
   {
-    // intialize H
-    for (int i = 0; i < d_restart; i++)
-    {
-      v[i].set(0.0);
-    }
+    // clear krylov subspace
+    for (int i = 0; i < d_restart; i++) v[i].set(0.0);
     g.set(0.0);
-    //y.set(0.0);
 
     // compute residual
-    // apply right preconditioner
-    if (d_PR) d_PR->apply(x);
-    // apply operator
+    //   apply operator
     d_A->multiply(x, r);
     r.subtract(b);
     r.scale(-1);
-    r.display();
-    // apply left preconditioner
+    //   apply left preconditioner
     if (d_PL) d_PL->apply(r);
-    r.display();
-    //r.scale(-1.0);
+    //   compute norm of residual
     T rho = r.norm(Vec_T::L2);
 
-    // check initial outer residual
+    // check initial outer residual.  if it's small enough, we started
+    // with a solved system.
     if (iteration == 0)
     {
       if (monitor_init(rho)) return;
       ++iteration;
     }
+    // otherwise, we must be restarting
     else
     {
       if (d_monitor_output) cout << "restarting..." << endl;
@@ -166,6 +162,11 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       if ( (d_reorthog == 1 and norm_Av + 0.001 * norm_Av_2 == norm_Av) or
            (d_reorthog == 2) )
       {
+        // summarized from kelley:
+        //  if the new vector (i.e. v[k+1]) is very small relative to
+        //  A*v[k], then information might be lost so reorthogonalize.  the
+        //  delta of 0.001 is what kelley uses in his test code.
+
         cout << " reorthog ... " << endl;
         for (int j = 0; j < k; ++j)
         {
@@ -179,6 +180,7 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       //---------------------------------------------------------------------//
       // watch for happy breakdown: if H[k+1][k] == 0, we've solved Ax=b
       //---------------------------------------------------------------------//
+
       if (d_H[k+1][k] != 0.0)
       {
         v[k+1].scale(1.0/d_H[k+1][k]);

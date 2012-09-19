@@ -35,7 +35,6 @@ GaussSeidel<T>::GaussSeidel(const double  atol,
 // SOLVE
 //---------------------------------------------------------------------------//
 
-
 template <class T>
 inline void GaussSeidel<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 {
@@ -65,7 +64,7 @@ inline void GaussSeidel<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     // compute X1 <-- -inv(D+L)*U*X0 + inv(D+L)*b
     //---------------------------------------------------//
 
-    T* a = A->value();
+    T* a = A->values();
     for (int i = 0; i < A->number_rows(); i++)
     {
       T v = 0;

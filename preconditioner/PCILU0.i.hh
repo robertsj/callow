@@ -10,6 +10,8 @@
 #ifndef PCILU0_I_HH_
 #define PCILU0_I_HH_
 
+#include <iostream>
+
 namespace callow
 {
 
@@ -21,66 +23,84 @@ PCILU0<T>::PCILU0(SP_matrix A)
   Require(A->number_rows() == A->number_columns());
 
   // copy A
-  d_P(new Matrix<T>(*A));
+  d_P = new Matrix<T>(*A);
 
+  using std::cout;
+  using std::endl;
 
   // the following tries to remain close to saad's notation
   // in his fortran snippet (sec 10.3.2)
 
   // working array
-  int* iw = new int(A->number_columns());
+  int* iw = new int[A->number_columns()];
   for (int k = 0; k < A->number_columns(); ++k) iw[k] = -1;
+
+  /*
+   *  ILU(0)
+   *
+   *  for i = 1, m
+   *    for k = 0, i-1
+   *      if (A(i,k) > 0) A(i,k) = A(i,k)/A(i,i)
+   *      for j = k+1, n
+   *        if (A(i,j) > 0) A(i,j) = A(i,j) - A(i,j)*A(k,j)
+   *
+   */
 
   // get the csr structure
   int n = d_P->number_rows();
-  int *ia = d_P->row_pointers();
-  int *ja = d_P->column_indices();
-  int *uptr = d_P->diagonal_indices();
-  T   *luval = d_P->value();
+  int *ia = d_P->rows();
+  int *ja = d_P->columns();
+  int *uptr = d_P->diagonals();
+  T   *luval = d_P->values();
 
-  // main loop
-  for (int k = 0; k < n; ++k)
+  // loop over rows
+  for (int i = 1; i < n; ++i)
   {
-    int j1 = ia[k];
-    int j2 = ia[k+1];
-    int j;
-    for (j = j1; j < j2; ++j)
-      iw[ja[j]] = j;
-    j = j1;
-    while (j < j2)
+    cout << " i = " << i << endl;
+
+    // pre-store the column pointers for this row.  if
+    // the column isn't present, the value remains -1
+    for (int p = d_P->start(i); p < d_P->diagonal(i); ++p)
+      iw[d_P->column(p)] = p;
+
+    // loop through the columns
+    for (int p = d_P->start(i); p < d_P->diagonal(i); ++p)
     {
-      int jrow = ja[j];
-      // exit if diagonal element is reached
-      if (jrow >= k)
-        break;
-      else
+      // column index of row i
+      int k = d_P->column(p);
+
+      cout << "   k = " << k << endl;
+
+      // compute row multiplier (aik = aik / akk)
+      T val = luval[p] / luval[d_P->diagonal(k)];
+      luval[p] = val;
+      // for *row* k, loop over the columns j above diagonal
+      for (int q = d_P->diagonal(k) + 1; q < d_P->end(k); ++q)
       {
-        // compute the multiplier for the jrow
-        T t1 = luval[j] * luval[uptr[jrow]]
-        luval[j] *= t1;
-        // perform linear combination
-        for (int jj = uptr[jrow]+1; jj < ia[jrow+1]-1; ++jj)
-        {
-          int jw = iw[ja[jj]];
-          if (jw != -1) luval[jw] -= t1 * luval[jj];
-        }
-        ++j;
+        int j = d_P->column(q);
+        cout << "     j = " << j << endl;
+        int pp = iw[j];
+        for (int ii = 0; ii < n; ++ii) cout << iw[ii] << " ";
+        cout << endl;
+        if (pp != -1) cout << "     pp col = " << pp << d_P->column(p) << endl;
+        if (pp != -1) luval[pp] -= val * luval[q];
       }
+      //luval[p] = val;
     }
-    // store pointer to diagonal
-    uptr[k] = j;
-    if ( (jrow != k) or (luval[j] == 0.0) )
+    int d = d_P->diagonal(i);
+    if (luval[d] == 0.0)
     {
-      // could just insert a 1 or something
-      THROW("ZERO PIVOT IN ILU(0)");
+      THROW("ZERO PIVOT IN ILU0");
     }
-    luval[j] = 1.0 / luval[j];
-    // reset iw to -1
-    for (int i = j1; i < j2; ++i) iw[ja[i]] = -1;
+    // skip inverting diag for now
+    //luval[d] = 1.0 / luval[d];
+    // reset
+    for (int p = d_P->start(i); p < d_P->diagonal(i); ++p)
+      iw[d_P->column(p)] = -1;
   }
 
-  delete [] w;
-
+  delete [] iw;
+  d_P->print_matlab("pcilu.out");
 }
 
 template <class T>
@@ -97,7 +117,7 @@ void PCILU0<T>::apply(Vector<T> &x)
   //     y[i] = 1/L[i,i] * ( b[i] - sum(k=0:i-1, L[i,k]*y[k]) )
   // but note that in our ILU(0) scheme, L is *unit* lower triangle,
   // meaning L has ones on the diagonal (whereas U does not)
-  for (i = 0; i < d_P->number_rows(); ++i)
+  for (int i = 0; i < d_P->number_rows(); ++i)
   {
     // start index
     int s = d_P->start(i);
@@ -109,14 +129,14 @@ void PCILU0<T>::apply(Vector<T> &x)
     {
       // column index
       int c = d_P->column(p);
-      y[i] -= d_P->value()[p] * y[c];
+      y[i] -= d_P->values()[p] * y[c];
     }
   }
 
   // backward substitution
   //   for i = m-1:0
   //     y[i] = 1/U[i,i] * ( b[i] - sum(k=i+1:m-1, U[i,k]*y[k]) )
-  for (i = d_P->number_rows() - 1; i >= 0; --i)
+  for (int i = d_P->number_rows() - 1; i >= 0; --i)
   {
     // diagonal index
     int d = d_P->diagonal(i);
@@ -128,9 +148,9 @@ void PCILU0<T>::apply(Vector<T> &x)
     {
       // column index
       int c = d_P->column(p);
-      x[i] -= d_P->value()[p] * x[c];
+      x[i] -= d_P->values()[p] * x[c];
     }
-    x[i] */ d_P->value()[d];
+    x[i] /= d_P->values()[d];
   }
 
 }

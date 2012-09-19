@@ -95,7 +95,7 @@ public:
 
   LinearSolver(const double atol,
                const double rtol,
-               const int maxit,
+               const int maxit = 100,
                std::string name = "solver")
     : d_absolute_tolerance(atol)
     , d_relative_tolerance(rtol)
@@ -108,9 +108,9 @@ public:
     , d_monitor_diverge(true)
     , d_name(name)
   {
-    Require(d_absolute_tolerance > 0.0);
-    Require(d_relative_tolerance > 0.0);
-    Require(d_maximum_iterations >= 0);
+    Require(d_absolute_tolerance >= 0.0);
+    Require(d_relative_tolerance >= 0.0);
+    Require(d_maximum_iterations >  0);
   }
 
   virtual ~LinearSolver(){}
@@ -246,8 +246,8 @@ protected:
     d_L2_residual[it] = r;
     if (d_monitor_output) printf("iteration: %5i    residual: %12.8e \n", it, r);
     Assert(it > 0);
-    if (r < std::max(d_relative_tolerance * d_L2_residual[it - 1],
-                                d_absolute_tolerance))
+    if (r < std::max(d_relative_tolerance * d_L2_residual[0],
+                     d_absolute_tolerance))
     {
       printf("*** %s converged in %5i iterations with a residual of %12.8e \n",
              d_name.c_str(), it, r );

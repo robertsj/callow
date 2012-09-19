@@ -11,8 +11,9 @@
 #define callow_MATRIX_HH_
 
 #include "MatrixBase.hh"
-#include <vector>
 #include <ostream>
+#include <vector>
+#include <string>
 
 namespace callow
 {
@@ -134,6 +135,7 @@ public:
   void preallocate(const int nnz_row);
   /// allocate using variable row size
   void preallocate(int *nnz_rows);
+
   /// add one value (return false if can't add)
   bool insert(int  i, int  j, T  v);
   /// add n values to a row  (return false if can't add)
@@ -142,8 +144,8 @@ public:
   bool insert(int *i, int  j, T *v, int n);
   /// add n triplets  (return false if can't add)
   bool insert(int *i, int *j, T *v, int n);
-  /// number of nonzeros
-  int number_nonzeros() const { return d_nnz; }
+
+
   /// starting index for a row
   int start(const int i) const;
   /// diagonal index for a row
@@ -152,17 +154,24 @@ public:
   int end(const int i) const ;
   /// column index from cardinal index
   int column(const int p) const;
+
   /// value at a cardinal index
-  T   operator[](const int p) const;
+  T operator[](const int p) const;
   /// value at ij and returns 0 if not present
   T operator()(const int i, const int j) const;
+
   // get underlying storage and indexing. careful!
-  T* value() {return d_value;}
-  int* column_indices() {return d_column_indices;}
-  int* row_pointer() {return d_row_pointers;}
-  int* diagonal_indices() {return d_diagonal;}
-  // is memory allocated?
+  T*   values()    {return d_values;}
+  int* columns()   {return d_columns;}
+  int* rows()      {return d_rows;}
+  int* diagonals() {return d_diagonals;}
+
+  /// number of nonzeros
+  int number_nonzeros() const { return d_nnz; }
+  /// is memory allocated?
   bool allocated() const {return d_allocated;}
+  /// print (i, j, v) to ascii file with 1-based indexing for matlab
+  void print_matlab(std::string filename = "matrix.out") const;
 
   //---------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL MATRICES MUST IMPLEMENT
@@ -193,13 +202,13 @@ private:
   using MatrixBase<T>::d_petsc_matrix;
 #endif
   /// matrix elements
-  T* d_value;
+  T* d_values;
   /// column indices
-  int* d_column_indices;
+  int* d_columns;
   /// row pointers
-  int* d_row_pointers;
+  int* d_rows;
   /// pointer to diagonal index of each row
-  int* d_diagonal;
+  int* d_diagonals;
   /// number of nonzeros
   int d_nnz;
   /// are we allocated?

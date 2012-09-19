@@ -12,10 +12,12 @@
 
 #include "utils/DBC.hh"
 #include <algorithm>
+#include <cstring>
 #include <vector>
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <stdio.h>
 
 namespace callow
 {
@@ -52,21 +54,18 @@ Matrix<T>::Matrix(Matrix<T> &A)
   : MatrixBase<T>(A.number_rows(), A.number_columns())
 {
   d_nnz = A.number_nonzeros();
-  d_row_pointers = new int[d_m + 1];
-  d_column_indices = new int[d_nnz];
-  d_value = new T[d_nnz];
-  d_diagonal = new int[d_m];
-  d_row_pointers[0] = 0.0;
-  for (int i = 0; i < d_m; ++i)
-  {
-    d_row_pointers[i+1] = A.row_pointer()[i+1];
-    d_diagonal[i] = A.diagonal_indices()[i];
-  }
-  for (int i = 0; i < d_nnz; ++i)
-  {
-    d_column_indices[i] = A.column_indices()[i+1];
-    d_value[i] = A.value()[i];
-  }
+  d_rows      = new int[d_m + 1];
+  d_columns   = new int[d_nnz];
+  d_values    = new T[d_nnz];
+  d_diagonals = new int[d_m];
+
+  int size_I = sizeof(d_rows[0]);
+  int size_T = sizeof(d_values[0]);
+  std::memcpy(d_rows,      A.rows(),      size_I * (d_m + 1) );
+  std::memcpy(d_diagonals, A.diagonals(), size_I * d_m       );
+  std::memcpy(d_columns,   A.columns(),   size_I * d_nnz     );
+  std::memcpy(d_values,    A.values(),    size_T * d_nnz     );
+
   d_allocated = true;
   d_is_ready = true;
 }
@@ -81,10 +80,10 @@ Matrix<T>::~Matrix()
     // using our own arrays, those still need to be deleted.
     MatDestroy(&d_petsc_matrix);
 #endif
-    delete [] d_value;
-    delete [] d_column_indices;
-    delete [] d_row_pointers;
-    delete [] d_diagonal;
+    delete [] d_values;
+    delete [] d_columns;
+    delete [] d_rows;
+    delete [] d_diagonals;
   }
 }
 
@@ -183,15 +182,15 @@ inline void Matrix<T>::assemble()
   }
 
   // allocate
-  d_row_pointers   = new int[d_m + 1];
-  d_column_indices = new int[d_nnz];
-  d_value          = new T[d_nnz];
-  d_diagonal       = new int[d_m];
+  d_rows   = new int[d_m + 1];
+  d_columns = new int[d_nnz];
+  d_values          = new T[d_nnz];
+  d_diagonals       = new int[d_m];
 
   // fill the csr storage
   int aij_idx = 0;
   int val_idx = 0;
-  d_row_pointers[0] = 0;
+  d_rows[0] = 0;
 
   // pointer to value index
   int p = 0;
@@ -201,12 +200,12 @@ inline void Matrix<T>::assemble()
     // for all columns in the row
     for (int j = 0; j < d_aij[i].size(); ++j, ++p)
     {
-      d_column_indices[p] = d_aij[i][j].j;
-      d_value[p] = d_aij[i][j].v;
+      d_columns[p] = d_aij[i][j].j;
+      d_values[p] = d_aij[i][j].v;
       // store diagonal index
-      if (d_column_indices[p] == i) d_diagonal[i] = p;
+      if (d_columns[p] == i) d_diagonals[i] = p;
     }
-    d_row_pointers[i + 1] = p;
+    d_rows[i + 1] = p;
     // delete this row of coo storage
     d_aij[i].clear();
   }
@@ -216,8 +215,8 @@ inline void Matrix<T>::assemble()
 #ifdef CALLOW_ENABLE_PETSC
   PetscErrorCode ierr;
   ierr = MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, d_m, d_n,
-                                   d_row_pointers, d_column_indices,
-                                   d_value, &d_petsc_matrix);
+                                   d_rows, d_columns,
+                                   d_values, &d_petsc_matrix);
   Assert(!ierr);
 #endif
   d_is_ready = true;
@@ -232,14 +231,14 @@ inline int Matrix<T>::start(const int i) const
 {
   Require(d_is_ready);
   Require(i >= 0 and i < d_m);
-  return d_row_pointers[i];
+  return d_rows[i];
 }
 template <class T>
 inline int Matrix<T>::diagonal(const int i) const
 {
   Require(d_is_ready);
   Require(i >= 0 and i < d_m);
-  return d_diagonal[i];
+  return d_diagonals[i];
 }
 
 template <class T>
@@ -247,7 +246,7 @@ inline int Matrix<T>::end(const int i) const
 {
   Require(d_is_ready);
   Require(i >= 0 and i < d_m);
-  return d_row_pointers[i + 1];
+  return d_rows[i + 1];
 }
 
 template <class T>
@@ -255,7 +254,7 @@ inline int Matrix<T>::column(const int p) const
 {
   Require(d_is_ready);
   Require(p >= 0 and p < d_nnz);
-  return d_column_indices[p];
+  return d_columns[p];
 }
 
 template <class T>
@@ -263,7 +262,7 @@ inline T Matrix<T>::operator[](const int p) const
 {
   Require(d_is_ready);
   Require(p >= 0 and p < d_nnz);
-  return d_value[p];
+  return d_values[p];
 }
 
 //---------------------------------------------------------------------------//
@@ -278,16 +277,16 @@ inline T Matrix<T>::operator()(const int i, const int j) const
   Require(j >= 0 and j < d_n);
   // loop through elements in this row
   if (i == j)
-    return d_value[d_diagonal[i]];
+    return d_values[d_diagonals[i]];
   else if (i < j)
   {
-    for (int k = d_row_pointers[i]; k < d_diagonal[i]; k++)
-      if (d_column_indices[k] == j) return d_value[k];
+    for (int k = d_rows[i]; k < d_diagonals[i]; k++)
+      if (d_columns[k] == j) return d_values[k];
   }
   else
   {
-    for (int k = d_diagonal[i] + 1; k < d_row_pointers[i + 1]; k++)
-      if (d_column_indices[k] == j) return d_value[k];
+    for (int k = d_diagonals[i] + 1; k < d_rows[i + 1]; k++)
+      if (d_columns[k] == j) return d_values[k];
   }
   // otherwise, this is a zeros
   return 0.0;
@@ -316,10 +315,10 @@ inline void Matrix<T>::multiply(const Vector<T> &x, Vector<T> &y)
   {
     T temp = y[i];
     // for all columns
-    for (p = d_row_pointers[i]; p < d_row_pointers[i + 1]; p++)
+    for (p = d_rows[i]; p < d_rows[i + 1]; p++)
     {
-      int j = d_column_indices[p];
-      temp += x[j] * d_value[p];
+      int j = d_columns[p];
+      temp += x[j] * d_values[p];
     }
     y[i] = temp;
   }
@@ -342,10 +341,10 @@ inline void Matrix<T>::multiply_transpose(const Vector<T> &x, Vector<T> &y)
   for (int i = 0; i < d_m; i++)
   {
     // for all columns (now rows)
-    for (int p = d_row_pointers[i]; p < d_row_pointers[i + 1]; p++)
+    for (int p = d_rows[i]; p < d_rows[i + 1]; p++)
     {
-      int j = d_column_indices[p];
-      y[j] += x[i] * d_value[p];
+      int j = d_columns[p];
+      y[j] += x[i] * d_values[p];
     }
   }
 #endif
@@ -464,15 +463,34 @@ inline void Matrix<T>::display() const
   for (int i = 0; i < d_m; i++)
   {
     printf(" row  %3i | ", i);
-    for (int p = d_row_pointers[i]; p < d_row_pointers[i + 1]; p++)
+    for (int p = d_rows[i]; p < d_rows[i + 1]; p++)
     {
-      int j = d_column_indices[p];
-      T   v = d_value[p];
+      int j = d_columns[p];
+      T   v = d_values[p];
       printf(" %3i (%13.6e)", j, v);
     }
     printf("\n");
   }
   printf("\n");
+}
+
+template <class T>
+inline void Matrix<T>::print_matlab(std::string filename) const
+{
+  Require(d_is_ready);
+  FILE * f;
+  f = fopen (filename.c_str(), "w");
+  for (int i = 0; i < d_m; i++)
+  {
+    for (int p = d_rows[i]; p < d_rows[i + 1]; p++)
+    {
+      int j = d_columns[p];
+      T   v = d_values[p];
+      fprintf(f, "%8i   %8i    %23.16e \n", i+1, j+1, v);
+    }
+  }
+  fprintf(f, "\n");
+  fclose (f);
 }
 
 } // end namespace callow

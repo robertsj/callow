@@ -23,6 +23,7 @@
 #include "solver/GMRES.hh"
 // pc
 #include "preconditioner/PCJacobi.hh"
+#include "preconditioner/PCILU0.hh"
 //
 #include "test/matrix_fixture.hh"
 #include <iostream>
@@ -102,20 +103,36 @@ int test_GaussSeidel(int argc, char *argv[])
 int test_GMRES(int argc, char *argv[])
 {
   typename Matrix<double>::SP_matrix A = test_matrix_2<double>(4);
-  typename PCJacobi<double>::SP_preconditioner P(new PCJacobi<double>(A));
+  typename PCJacobi<double>::SP_preconditioner PJ(new PCJacobi<double>(A));
+  typename PCILU0<double>::SP_preconditioner   PI(new PCILU0<double>(A));
 
-  cout << A->number_rows() << endl;
-
-  GMRES<double> solver(1e-7, 1e-7, 10000, 20);
+  GMRES<double> solver(0, 1e-10, 10000, 30);
   solver.set_operators(A);
-  solver.set_left_pc(P);
+  //solver.set_left_pc(PI);
   solver.set_monitor_output(true);
   //solver.set_monitor_diverge(true);
 
   Vector<double> X(A->number_rows(), 1.0);
   Vector<double> B(A->number_rows(), 1.0);
   int status = solver.solve(B, X);
+  A->print_matlab("A.out");
+  B.print_matlab("B.out");
+  X.print_matlab("X.out");
 
+
+  typename Matrix<double>::SP_matrix Q;
+  Q = new Matrix<double>(3,3);
+  Q->preallocate(3);
+  Q->insert(0, 0, 1);
+  Q->insert(0, 1, 2);
+  Q->insert(1, 0, 3);
+  Q->insert(1, 1, 4);
+  Q->insert(1, 2, 5);
+  Q->insert(2, 1, 6);
+  Q->insert(2, 2, 7);
+  Q->assemble();
+  PCILU0<double> PQ(Q);
+  Q->print_matlab("q.out");
 
 
 //  GMRES<double> solver2(abstol, reltol, 10, 10 );

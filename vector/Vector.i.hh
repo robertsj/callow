@@ -12,7 +12,7 @@
 
 #include "utils/DBC.hh"
 #include <cmath>
-#include <cstdio>
+#include <stdio.h>
 #include <iostream>
 
 namespace callow
@@ -352,6 +352,19 @@ void Vector<T>::display() const
     printf(" row  %3i | %13.6e \n", i, d_value[i]);
   }
   printf("\n");
+}
+
+template <class T>
+inline void Vector<T>::print_matlab(std::string filename) const
+{
+  FILE * f;
+  f = fopen (filename.c_str(), "w");
+  for (int i = 0; i < d_size; i++)
+  {
+    fprintf(f, "%23.16e \n", d_value[i]);
+  }
+  fprintf(f, "\n");
+  fclose (f);
 }
 
 } // end namespace callow

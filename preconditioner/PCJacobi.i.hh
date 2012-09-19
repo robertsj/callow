@@ -27,14 +27,14 @@ PCJacobi<T>::PCJacobi(SP_matrix A)
   // load values from A and avoid divide by zero
   for (int i = 0; i < n; ++i)
   {
-    T aii = (*A)[i];
+    int d = A->diagonal(i);
+    T aii = (*A)[d];
     if (aii == 0.0)
       (*d_P)[i] = 1.0; // or n?
     else
-      (*d_P)[i] = 1.0;// / aii;
-    std::cout << " i=" << i << " " << (*d_P)[i] << std::endl;
+      (*d_P)[i] = 1.0 / aii;  // / aii;
   }
-
+  d_P->print_matlab("pcjacobi.out");
 }
 
 template <class T>
