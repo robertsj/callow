@@ -28,15 +28,8 @@ PCILU0<T>::PCILU0(SP_matrix A)
   using std::cout;
   using std::endl;
 
-  // the following tries to remain close to saad's notation
-  // in his fortran snippet (sec 10.3.2)
-
-  // working array
-  int* iw = new int[A->number_columns()];
-  for (int k = 0; k < A->number_columns(); ++k) iw[k] = -1;
-
-  /*
-   *  ILU(0)
+  /* the following mostly follows the algorithm of
+   * saad in ch 10, which is basically as follows:
    *
    *  for i = 1, m
    *    for k = 0, i-1
@@ -46,17 +39,18 @@ PCILU0<T>::PCILU0(SP_matrix A)
    *
    */
 
+  // working array
+  int* iw = new int[A->number_columns()];
+  for (int k = 0; k < A->number_columns(); ++k) iw[k] = -1;
+
+
   // get the csr structure
   int n = d_P->number_rows();
-  int *ia = d_P->rows();
-  int *ja = d_P->columns();
-  int *uptr = d_P->diagonals();
   T   *luval = d_P->values();
 
   // loop over rows
   for (int i = 1; i < n; ++i)
   {
-    cout << " i = " << i << endl;
 
     // pre-store the column pointers for this row.  if
     // the column isn't present, the value remains -1
@@ -69,8 +63,6 @@ PCILU0<T>::PCILU0(SP_matrix A)
       // column index of row i
       int k = d_P->column(p);
 
-      cout << "   k = " << k << endl;
-
       // compute row multiplier (aik = aik / akk)
       T val = luval[p] / luval[d_P->diagonal(k)];
       luval[p] = val;
@@ -78,29 +70,23 @@ PCILU0<T>::PCILU0(SP_matrix A)
       for (int q = d_P->diagonal(k) + 1; q < d_P->end(k); ++q)
       {
         int j = d_P->column(q);
-        cout << "     j = " << j << endl;
         int pp = iw[j];
-        for (int ii = 0; ii < n; ++ii) cout << iw[ii] << " ";
-        cout << endl;
-        if (pp != -1) cout << "     pp col = " << pp << d_P->column(p) << endl;
         if (pp != -1) luval[pp] -= val * luval[q];
       }
-      //luval[p] = val;
     }
     int d = d_P->diagonal(i);
     if (luval[d] == 0.0)
     {
       THROW("ZERO PIVOT IN ILU0");
     }
-    // skip inverting diag for now
-    //luval[d] = 1.0 / luval[d];
+
     // reset
     for (int p = d_P->start(i); p < d_P->diagonal(i); ++p)
       iw[d_P->column(p)] = -1;
   }
 
   delete [] iw;
-  d_P->print_matlab("pcilu.out");
+
 }
 
 template <class T>
@@ -154,8 +140,6 @@ void PCILU0<T>::apply(Vector<T> &x)
   }
 
 }
-
-
 
 } // end namespace detran
 
