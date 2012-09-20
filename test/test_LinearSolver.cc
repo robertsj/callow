@@ -106,9 +106,10 @@ int test_GMRES(int argc, char *argv[])
   typename PCJacobi<double>::SP_preconditioner PJ(new PCJacobi<double>(A));
   typename PCILU0<double>::SP_preconditioner   PI(new PCILU0<double>(A));
 
-  GMRES<double> solver(0, 1e-10, 10000, 30);
+  //GMRES<double> solver(0, 1e-7, 10000, 50);
+  GaussSeidel<double> solver(0, 1e-7, 10000);
   solver.set_operators(A);
-  //solver.set_left_pc(PJ);
+  solver.set_left_pc(PJ);
   solver.set_monitor_output(true);
   //solver.set_monitor_diverge(true);
 
