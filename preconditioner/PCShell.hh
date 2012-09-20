@@ -45,10 +45,19 @@ public:
   //-------------------------------------------------------------------------//
 
   /// Construct a shell preconditioner
-  PCShell();
+  PCShell(std::string name = "shell preconditioner");
 
   /// Virtual destructor
   virtual ~PCShell(){};
+
+  //-------------------------------------------------------------------------//
+  // PUBLIC FUNCTIONS
+  //-------------------------------------------------------------------------//
+
+#ifdef CALLOW_ENABLE_PETSC
+  /// return petsc preconditioner
+  PC petsc_pc() {return d_petsc_pc;}
+#endif
 
   //-------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL PRECONDITIONERS MUST IMPLEMENT THIS
@@ -59,6 +68,12 @@ public:
 
 protected:
 
+  //-------------------------------------------------------------------------//
+  // DATA
+  //-------------------------------------------------------------------------//
+
+  using Base::d_name;
+
 #ifdef CALLOW_ENABLE_PETSC
   /// PETSc preconditioner
   PC d_petsc_pc;
@@ -67,14 +82,14 @@ protected:
 };
 
 #ifdef CALLOW_ENABLE_PETSC
-/// Wrapper apply for PETSc
-PetscErrorCode apply_petsc(PC pc, Vec x, Vec y);
+// this is the function petsc actual calls; internally, it redirects
+// to our own shell operation
+inline PetscErrorCode pc_apply_wrapper(PC pc, Vec x, Vec y);
 #endif
+
 
 } // end namespace callow
 
 #include "PCShell.i.hh"
-
-
 
 #endif /* PCSHELL_HH_ */

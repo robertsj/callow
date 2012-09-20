@@ -13,6 +13,7 @@
 #include "callow_config.hh"
 #include "matrix/MatrixBase.hh"
 #include "vector/Vector.hh"
+#include <string>
 
 namespace callow
 {
@@ -67,7 +68,7 @@ public:
   // CONSTRUCTOR & DESTRUCTOR
   //-------------------------------------------------------------------------//
 
-  Preconditioner(){};
+  Preconditioner(std::string name = "preconditioner"){};
 
   virtual ~Preconditioner(){};
 
@@ -79,6 +80,9 @@ public:
   virtual void apply(Vector<T> &b, Vector<T> &x) = 0;
 
 protected:
+
+  /// pc name
+  std::string d_name;
 
 };
 

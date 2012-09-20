@@ -29,7 +29,7 @@ GMRES<T>::GMRES(const double  atol,
                 const double  rtol,
                 const int     maxit,
                 const int     restart)
-  : LinearSolver<T>(atol, rtol, maxit, "GMRES")
+  : LinearSolver<T>(atol, rtol, maxit, "solver_gmres")
   , d_restart(restart)
   , d_reorthog(1)
 {

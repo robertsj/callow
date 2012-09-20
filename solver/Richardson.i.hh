@@ -25,7 +25,7 @@ Richardson<T>::Richardson(const double  atol,
                           const double  rtol,
                           const int     maxit,
                           const double  omega)
-  : LinearSolver<T>(atol, rtol, maxit, "Richardson")
+  : LinearSolver<T>(atol, rtol, maxit, "solver_richardson")
   , d_omega(omega)
 {
 

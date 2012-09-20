@@ -25,7 +25,7 @@ template <class T>
 Jacobi<T>::Jacobi(const double  atol,
                   const double  rtol,
                   const int     maxit)
-  : LinearSolver<T>(atol, rtol, maxit, "Jacobi")
+  : LinearSolver<T>(atol, rtol, maxit, "solver_jacobi")
 {
   /* ... */
 }

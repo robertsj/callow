@@ -26,7 +26,7 @@ template <class T>
 GaussSeidel<T>::GaussSeidel(const double  atol,
                   const double  rtol,
                   const int     maxit)
-  : LinearSolver<T>(atol, rtol, maxit, "GaussSeidel")
+  : LinearSolver<T>(atol, rtol, maxit, "solver_gauss_seidel")
 {
   /* ... */
 }
