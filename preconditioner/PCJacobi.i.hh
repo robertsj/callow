@@ -38,12 +38,13 @@ PCJacobi<T>::PCJacobi(SP_matrix A)
 }
 
 template <class T>
-void PCJacobi<T>::apply(Vector<T> &x)
+void PCJacobi<T>::apply(Vector<T> &b, Vector<T> &x)
 {
   // preconditions
   Require(x.size() == d_P->size());
 
-  // apply x = inv(P)*y
+  // apply x = inv(P)*b
+  x.copy(b);
   x.multiply((*d_P));
 }
 

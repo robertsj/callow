@@ -57,7 +57,7 @@ public:
   // PUBLIC FUNCTIONS
   //---------------------------------------------------------------------------//
 
-  void set_size(const int m, const int n)
+  virtual void set_size(const int m, const int n)
   {
     Require(m > 0 and n > 0);
     d_m = m;

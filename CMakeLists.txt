@@ -43,6 +43,12 @@ set(CALLOW_ENABLE_PETSC_OPS NO CACHE BOOL
   "Use PETSc vector and matrix operations where applicable."
 )
 
+# Options for gperftools. On or Off.
+SET(CALLOW_ENABLE_GPERFTOOLS NO CACHE BOOL
+  "Enable Google Performance Tools for profiling."
+)
+
+
 # Write config file, install it, and include that directory for all source
 set(CALLOW_CONFIG_IN  "${CMAKE_CURRENT_SOURCE_DIR}/config/callow_config.hh.in")
 set(CALLOW_CONFIG_OUT "${PROJECT_BINARY_DIR}/config/callow_config.hh")
@@ -67,6 +73,13 @@ if(CALLOW_ENABLE_SLEPC)
   find_package(SLEPc REQUIRED)
   include_directories(${SLEPC_INCLUDES})
 endif()
+
+# This is a hack for now.  Probably worth generating a CMake finder thing.
+IF(CALLOW_ENABLE_GPERFTOOLS )
+  set(GPERFTOOLS_LIBRARIES "/home/robertsj/opt/gperftools/lib/libprofiler.so")
+  set(GPERFTOOLS_INCLUDE   "/home/robertsj/opt/gperftools/include")
+  include_directories(${GPERFTOOLS_INCLUDE})
+ENDIF()
 
 #------------------------------------------------------------------------------#
 # SOURCE
@@ -115,6 +128,7 @@ ADD_LIBRARY(callow
 TARGET_LINK_LIBRARIES(callow 
                       ${PETSC_LIBRARIES}
                       ${SLEPC_LIBRARIES}  
+                      ${GPERFTOOLS_LIBRARIES}
 )
 
 #ADD_LIBRARY(callow_static
@@ -173,6 +187,12 @@ if(CALLOW_ENABLE_SLEPC)
   message("++++ SLEPc:       enabled")
 else()
   message("++++ SLEPc:       disabled")
+endif()
+
+if(CALLOW_ENABLE_GPERFTOOLS)
+  message("++++ Profiling:   enabled")
+else()
+  message("++++ Profiling:   disabled")
 endif()
 
 if(CALLOW_ENABLE_TEST )

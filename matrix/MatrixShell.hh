@@ -10,6 +10,8 @@
 #ifndef callow_MATRIXSHELL_HH_
 #define callow_MATRIXSHELL_HH_
 
+#include "MatrixBase.hh"
+
 namespace callow
 {
 
@@ -43,25 +45,30 @@ public:
   // CONSTRUCTOR & DESTRUCTOR
   //---------------------------------------------------------------------------//
 
-  MatrixShell()
-    : d_m(0)
-    , d_n(0)
-    , d_sizes_set(false)
-    , d_is_ready(false)
-  {
-    /* ... */
-  }
+  /// the context is the "this" of the caller
+  MatrixShell(void* context);
+  /// construct with known sizes
+  MatrixShell(void* context, const int m, const int n);
+  virtual ~MatrixShell();
 
-  MatrixShell(const int m, const int n)
-    : d_m(m)
-    , d_n(n)
-    , d_is_ready(false)
+  void set_size(const int m, const int n)
   {
     Require(m > 0 and n > 0);
+    d_m = m;
+    d_n = n;
     d_sizes_set = true;
+#ifdef CALLOW_ENABLE_PETSC
+    PetscErrorCode ierr;
+    ierr = MatCreate(PETSC_COMM_SELF, &d_petsc_matrix);
+    ierr = MatSetSizes(d_petsc_matrix, m, n, PETSC_DETERMINE, PETSC_DETERMINE);
+    ierr = MatSetType(d_petsc_matrix, MATSHELL);
+    ierr = MatShellSetContext(d_petsc_matrix, d_context);
+    Ensure(!ierr);
+#endif
+    set_operation();
+    d_is_ready = true;
   }
 
-  virtual ~MatrixShell(){}
 
   //---------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL MATRICES MUST IMPLEMENT
@@ -91,19 +98,58 @@ protected:
   // DATA
   //---------------------------------------------------------------------------//
 
-  /// number of rows
-  int d_m;
-  /// number of columns
-  int d_n;
-  /// are m and n set?
-  bool d_sizes_set;
-  /// am i good to go?
-  bool d_is_ready;
+  /// expose base members
+  using MatrixBase<T>::d_m;
+  using MatrixBase<T>::d_n;
+  using MatrixBase<T>::d_sizes_set;
+  using MatrixBase<T>::d_is_ready;
+
+#ifdef CALLOW_ENABLE_PETSC
+  using MatrixBase<T>::d_petsc_matrix;
+#endif
+
+private:
+
+  /// context of my caller
+  void* d_context;
+
+  /// tell petsc about the operation, if applicable
+  void set_operation();
 
 };
+
+#ifdef CALLOW_ENABLE_PETSC
+inline PetscErrorCode shell_multiply_wrapper(Mat A, Vec x, Vec y)
+{
+  // get the context and cast
+  PetscErrorCode ierr;
+  void *context;
+  ierr = MatShellGetContext(A, &context);
+  Assert(!ierr);
+  MatrixShell<PetscScalar>* foo = (MatrixShell<PetscScalar>*) context;
+  // wrap the petsc vectors
+  Vector<PetscScalar> X(x);
+  Vector<PetscScalar> Y(y);
+  // call the actual apply operator.
+  foo->multiply(X, Y);
+  return ierr;
+}
+#endif
+
+template <class T>
+void MatrixShell<T>::set_operation()
+{
+#ifdef CALLOW_ENABLE_PETSC
+  MatShellSetOperation(d_petsc_matrix, MATOP_MULT,
+                       (void(*)(void))shell_multiply_wrapper);
+#endif
+  d_is_ready = true;
+}
+
 
 
 } // end namespace callow
 
+#include "MatrixShell.i.hh"
 
 #endif /* callow_MATRIXSHELL_HH_ */

@@ -87,20 +87,20 @@ PCILU0<T>::PCILU0(SP_matrix A)
 
   delete [] iw;
 
+  // size the working vector
+  d_y.resize(d_P->number_rows(), 0.0);
+
 }
 
 template <class T>
-void PCILU0<T>::apply(Vector<T> &x)
+void PCILU0<T>::apply(Vector<T> &b, Vector<T> &x)
 {
 
   // solve LUx = x --> x = inv(U)*inv(L)*x
 
-  // temporary vector (might not be needed)
-  Vector<T> y = x;
-
   // forward substitution
   //   for i = 0:m-1
-  //     y[i] = 1/L[i,i] * ( b[i] - sum(k=0:i-1, L[i,k]*y[k]) )
+  //     x[i] = 1/L[i,i] * ( b[i] - sum(k=0:i-1, L[i,k]*y[k]) )
   // but note that in our ILU(0) scheme, L is *unit* lower triangle,
   // meaning L has ones on the diagonal (whereas U does not)
   for (int i = 0; i < d_P->number_rows(); ++i)
@@ -110,12 +110,12 @@ void PCILU0<T>::apply(Vector<T> &x)
     // diagonal index
     int d = d_P->diagonal(i);
     // invert row
-    y[i] = x[i];
+    d_y[i] = b[i];
     for (int p = s; p < d; ++p)
     {
       // column index
       int c = d_P->column(p);
-      y[i] -= d_P->values()[p] * y[c];
+      d_y[i] -= d_P->values()[p] * d_y[c];
     }
   }
 
@@ -129,7 +129,7 @@ void PCILU0<T>::apply(Vector<T> &x)
     // end index
     int e = d_P->end(i);
     // invert row
-    x[i] = y[i];
+    x[i] = d_y[i];
     for (int p = d; p < e; ++p)
     {
       // column index

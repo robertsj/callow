@@ -22,16 +22,20 @@ namespace callow
 // CONSTRUCTOR & DESTRUCTOR
 //---------------------------------------------------------------------------//
 
+//---------------------------------------------------------------------------//
 template <class T>
 Vector<T>::Vector()
   : d_size(0)
+  , d_temporary(false)
 {
   /* ... */
 }
 
+//---------------------------------------------------------------------------//
 template <class T>
 Vector<T>::Vector(const int n, T v)
   : d_size(n)
+  , d_temporary(false)
 {
   // Preconditions
   Require(d_size > 0);
@@ -53,9 +57,11 @@ Vector<T>::Vector(const int n, T v)
   Ensure(d_value);
 }
 
+//---------------------------------------------------------------------------//
 template <class T>
 Vector<T>::Vector(const Vector &x)
   : d_size(x.size())
+  , d_temporary(false)
 {
   // nothing to do if x has no elements
   if (!d_size) return;
@@ -75,9 +81,11 @@ Vector<T>::Vector(const Vector &x)
 #endif
 }
 
+//---------------------------------------------------------------------------//
 template <class T>
 Vector<T>::Vector(Vector &x)
   : d_size(x.size())
+  , d_temporary(false)
 {
   // nothing to do if x has no elements
   if (!d_size) return;
@@ -97,10 +105,27 @@ Vector<T>::Vector(Vector &x)
 #endif
 }
 
+//---------------------------------------------------------------------------//
+#ifdef CALLOW_ENABLE_PETSC
+template <class T>
+Vector<T>::Vector(Vec pv)
+  : d_size(0)
+  , d_temporary(true)
+{
+  PetscErrorCode ierr;
+  ierr = VecGetArray(pv, &d_value);
+  ierr = VecRestoreArray(pv, PETSC_NULL);
+  ierr = VecGetSize(pv, &d_size);
+  d_petsc_vector = pv;
+  Ensure(!ierr);
+}
+#endif
+
+//---------------------------------------------------------------------------//
 template <class T>
 Vector<T>::~Vector()
 {
-  if (!d_size) return;
+  if (!d_size or d_temporary) return;
 #ifdef CALLOW_ENABLE_PETSC
   d_value = 0;
   VecDestroy(&d_petsc_vector);
@@ -110,8 +135,9 @@ Vector<T>::~Vector()
 }
 
 template <class T>
-void Vector<T>::resize(const int n)
+void Vector<T>::resize(const int n, const T v)
 {
+  Insist(!d_temporary, "Cannot resize a temporary Vector!");
 #ifdef CALLOW_ENABLE_PETSC
   // destroy the vector if it's built
   if (d_size)
@@ -130,6 +156,7 @@ void Vector<T>::resize(const int n)
   if (d_size) delete [] d_value;
   d_size = n;
   if (d_size) d_value = new T[d_size];
+  set(v);
 #endif
 }
 

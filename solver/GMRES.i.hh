@@ -69,6 +69,7 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 
   // residual
   Vec_T r(x.size(), 0.0);
+  Vec_T t(x.size(), 0.0);
 
   // vector such that x = V*y
   Vec_T y(d_restart, 0.0);
@@ -94,11 +95,11 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 
     // compute residual
     //   apply operator
-    d_A->multiply(x, r);
-    r.subtract(b);
-    r.scale(-1);
+    d_A->multiply(x, t);
+    t.subtract(b);
+    t.scale(-1);
     //   apply left preconditioner
-    if (d_PL) d_PL->apply(r);
+    if (d_PL) d_PL->apply(t, r);
     //   compute norm of residual
     T rho = r.norm(Vec_T::L2);
 
@@ -136,11 +137,19 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       //---------------------------------------------------------------------//
 
       // right preconditioner
-      if (d_PR) d_PR->apply(v[k]);
+      if (d_PR)
+      {
+        t.copy(v[k]);
+        d_PR->apply(t, v[k]);
+      }
       // apply A
       d_A->multiply(v[k], v[k+1]);
       // left preconditioner
-      if (d_PL) d_PL->apply(v[k+1]);
+      if (d_PL)
+      {
+        t.copy(v[k+1]);
+        d_PL->apply(t, v[k+1]);
+      }
 
       //---------------------------------------------------------------------//
       // use modified gram-schmidt to orthogonalize v(k+1)
@@ -231,7 +240,11 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       x.add_a_times_x(y[i], v[i]);
     }
     // \todo this assumes x_0 = 0; otherwise, need x = x_0 + inv(P)*(V*y)
-    if (d_PR) d_PR->apply(x);
+    if (d_PR)
+    {
+      t.copy(x);
+      d_PR->apply(t, x);
+    }
 
 
   } // end outers

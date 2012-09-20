@@ -21,6 +21,8 @@
 #cmakedefine CALLOW_ENABLE_SLEPC
 // if petsc is enabled, optionally use its matrix and vector operations
 #cmakedefine CALLOW_ENABLE_PETSC_OPS
+#cmakedefine CALLOW_ENABLE_GPERFTOOLS
+
 
 #ifdef CALLOW_ENABLE_PETSC
 #include "petsc.h"

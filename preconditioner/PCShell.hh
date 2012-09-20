@@ -1,15 +1,15 @@
 //----------------------------------*-C++-*----------------------------------//
 /*!
- * \file   PCILU0.hh
- * \brief  PCILU0 
- * \author Jeremy Roberts
- * \date   Sep 18, 2012
+ * \file   PCShell.hh
+ * \author robertsj
+ * \date   Sep 20, 2012
+ * \brief  PCShell class definition.
+ * \note   Copyright (C) 2012 Jeremy Roberts. 
  */
 //---------------------------------------------------------------------------//
 
-#ifndef PCILU0_HH_
-#define PCILU0_HH_
-
+#ifndef PCSHELL_HH_
+#define PCSHELL_HH_
 
 #include "Preconditioner.hh"
 #include "matrix/Matrix.hh"
@@ -18,27 +18,15 @@ namespace callow
 {
 
 /*!
- *  \class PCILU0
- *  \brief Implements the ILU(0) preconditioner
+ *  \class PCShell
+ *  \brief Applies a shell preconditioner
  *
- *  Following Saad, ILU(0) is defined
- *  \code
- *    for i = 2, n
- *      for k = 1, i - 1
- *        for (i, k) in nonzeros of lower A
- *          A(i,k) = A(i,k)/A(k,k)
- *          for j = k + 1 .. n
- *            for (i, j) in nonzeros of upper A
- *              A(i, j) = A(i, j) - A(i, k)*A(k, k)
- *            end
- *          end
- *        end
- *      end
- *    end
- *  \endcode
+ *  A shell preconditioner allows the user to define their own
+ *  preconditioning processes that are potentially matrix free.
+ *
  */
 template <class T>
-class PCILU0: public Preconditioner<T>
+class PCShell: public Preconditioner<T>
 {
 
 public:
@@ -56,35 +44,37 @@ public:
   // CONSTRUCTOR & DESTRUCTOR
   //-------------------------------------------------------------------------//
 
-  /// Construct a Jacobi preconditioner for the explicit matrix A
-  PCILU0(SP_matrix A);
+  /// Construct a shell preconditioner
+  PCShell();
 
   /// Virtual destructor
-  virtual ~PCILU0(){};
+  virtual ~PCShell(){};
 
   //-------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL PRECONDITIONERS MUST IMPLEMENT THIS
   //-------------------------------------------------------------------------//
 
   /// Solve Px = b
-  void apply(Vector<T> &b, Vector<T> &x);
+  virtual void apply(Vector<T> &b, Vector<T> &x) = 0;
 
 protected:
 
-  /// ILU decomposition of A
-  SP_matrix d_P;
-
-  /// Working vector
-  Vector<T> d_y;
+#ifdef CALLOW_ENABLE_PETSC
+  /// PETSc preconditioner
+  PC d_petsc_pc;
+#endif
 
 };
 
+#ifdef CALLOW_ENABLE_PETSC
+/// Wrapper apply for PETSc
+PetscErrorCode apply_petsc(PC pc, Vec x, Vec y);
+#endif
+
 } // end namespace callow
 
-#include "PCILU0.i.hh"
+#include "PCShell.i.hh"
 
-#endif // PCILU0_HH_ 
 
-//---------------------------------------------------------------------------//
-//              end of file PCILU0.hh
-//---------------------------------------------------------------------------//
+
+#endif /* PCSHELL_HH_ */

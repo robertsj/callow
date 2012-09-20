@@ -51,8 +51,11 @@ public:
   Vector(const int n, T v = 0);
   Vector(const Vector &x);
   Vector(Vector &x);
+#ifdef CALLOW_ENABLE_PETSC
+  Vector(Vec pv);
+#endif
   virtual ~Vector();
-  void resize(const int n);
+  void resize(const int n, const T v = 0.0);
 
   //---------------------------------------------------------------------------//
   // ACCESS
@@ -109,6 +112,8 @@ protected:
 #ifdef CALLOW_ENABLE_PETSC
   Vec d_petsc_vector;
 #endif
+  // is this a temporary wrapper around a pointer? i.e. no delete?
+  bool d_temporary;
 
 };
 

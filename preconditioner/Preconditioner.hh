@@ -75,8 +75,8 @@ public:
   // ABSTRACT INTERFACE -- ALL PRECONDITIONERS MUST IMPLEMENT THIS
   //-------------------------------------------------------------------------//
 
-  /// Solve Px' = x
-  virtual void apply(Vector<T> &x) = 0;
+  /// Solve Px = b
+  virtual void apply(Vector<T> &b, Vector<T> &x) = 0;
 
 protected:
 

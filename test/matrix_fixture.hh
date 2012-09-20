@@ -24,8 +24,8 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
   A->preallocate(3);
 
   double l = -0.20;
-  double d = 0.50;
-  double u = -0.20;
+  double d = -0.50;
+  double u = -0.21;
 
   for (int row = 0; row < n; row++)
   {
@@ -49,7 +49,6 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
     }
   }
   A->assemble();
-  A->display();
   return A;
 }
 
@@ -168,6 +167,8 @@ typename Matrix<T>::SP_matrix test_matrix_2(int n = 10)
   cout << " done." << endl;
   return A;
 }
+
+
 
 } // end namespace detran
 

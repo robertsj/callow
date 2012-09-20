@@ -61,7 +61,7 @@ public:
   //-------------------------------------------------------------------------//
 
   /// Solve Px = y
-  void apply(Vector<T> &x);
+  void apply(Vector<T> &b, Vector<T> &x);
 
 protected:
 
