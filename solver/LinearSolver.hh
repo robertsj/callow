@@ -251,7 +251,7 @@ protected:
     d_number_iterations = it;
     d_L2_residual[it] = r;
     if (d_monitor_output) printf("iteration: %5i    residual: %12.8e \n", it, r);
-    Assert(it > 0);
+   // Assert(it > 0);
     if (r < std::max(d_relative_tolerance * d_L2_residual[0],
                      d_absolute_tolerance))
     {

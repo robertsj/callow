@@ -63,8 +63,8 @@ int test_MatrixShell(int argc, char *argv[])
     // Multiply
     A.multiply(X, Y);
     double ref[] =
-    {-0.210000000000000, -1.340000000000000, -4.090000000000000, -8.660000000000000, -9.800000000000001};
-
+    { -0.21,  -0.34,  -0.09,   0.34,   6.2};
+    Y.display();
     for (int i = 0; i < Y.size(); i++)
     {
       TEST(soft_equiv(Y[i], ref[i]));
@@ -73,7 +73,7 @@ int test_MatrixShell(int argc, char *argv[])
     // Transpose
     A.multiply_transpose(Y, X);
     double ref2[] =
-    {0.373000000000000, 1.532100000000000, 4.058400000000001, 7.148900000000000, 6.718600000000000};
+    {-0.037,  -0.1079,  -0.0416, -1.0511,   3.0286};
 
     for (int i = 0; i < X.size(); i++)
     {

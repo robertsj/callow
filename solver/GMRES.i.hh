@@ -64,8 +64,11 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 
   typedef Vector<T> Vec_T;
 
+  int restart = d_restart;
+  if (restart >= d_A->number_rows()) restart = d_A->number_rows();
+
   // krylov basis
-  std::vector<Vec_T>  v(d_restart, Vec_T(x.size(), 0.0));
+  std::vector<Vec_T>  v(d_restart + 1, Vec_T(x.size(), 0.0));
 
   // residual
   Vec_T r(x.size(), 0.0);
@@ -85,32 +88,38 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
   // outer iterations
   //-------------------------------------------------------------------------//
 
-  int iteration = 0;
+  int iteration = 0; // outer iteration
   bool done = false;
   while (!done and iteration < d_maximum_iterations)
   {
+
     // clear krylov subspace
     for (int i = 0; i < d_restart; i++) v[i].set(0.0);
     g.set(0.0);
 
     // compute residual
     //   apply operator
-    d_A->multiply(x, t);
-    t.subtract(b);
-    t.scale(-1);
+    d_A->multiply(x, r);
+    r.subtract(b);
+    r.scale(-1);
     //   apply left preconditioner
-    if (d_P and d_pc_side == Base::LEFT) d_P->apply(t, r);
+    if (d_P and d_pc_side == Base::LEFT)
+    {
+      t.copy(r);
+      d_P->apply(t, r);
+    }
     //   compute norm of residual
     T rho = r.norm(Vec_T::L2);
+
+    // otherwise, we must be restarting
 
     // check initial outer residual.  if it's small enough, we started
     // with a solved system.
     if (iteration == 0)
     {
+      cout << "initial..." << endl;
       if (monitor_init(rho)) return;
-      ++iteration;
     }
-    // otherwise, we must be restarting
     else
     {
       if (d_monitor_output) cout << "restarting..." << endl;
@@ -123,10 +132,12 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
 
     // inner iterations (of size restart)
     int k = 0;
-    for (; k < d_restart - 1; ++k, ++iteration)
+    int lala = 0;
+    for (; k < d_restart; ++k)
     {
-
-      if (iteration >= d_maximum_iterations)
+      ++iteration;
+      // check iteration count
+      if (iteration >= d_maximum_iterations-1)
       {
         done = true;
         break;
@@ -222,6 +233,11 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       rho = std::abs(g_1);
       if (monitor(iteration, rho))
       {
+        ++k;
+        printf("gmres(%3i) terminated at outer iteration %5i ",
+               d_restart, iteration/d_restart);
+        printf("(inner iteration %3i) to a solution with residual: %12.8e \n",
+               k, rho);
         done = true;
         break;
       }
@@ -278,7 +294,7 @@ inline void GMRES<T>::compute_y(Vector<T> &y, const Vector<T> &g, const int k)
   // H is [m+1][m], though we may have only need for k*k
   // solves H[0:k][0:k]*y[0:k] = g[0:k]
   //  but only for H_ij for j>=i, i.e. upper triangle
-  Require(k < d_restart);
+  Require(k <= d_restart);
   Require(y.size() >= k);
   Require(g.size() >= k);
 

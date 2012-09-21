@@ -7,8 +7,8 @@
  */
 //---------------------------------------------------------------------------//
 
-#ifndef PETSCSOLVER_HH_
-#define PETSCSOLVER_HH_
+#ifndef callow_PETSCSOLVER_HH_
+#define callow_PETSCSOLVER_HH_
 
 #include "LinearSolver.hh"
 
@@ -61,22 +61,30 @@ public:
     d_A = A;
     Ensure(d_A->number_rows() == d_A->number_columns());
     PetscErrorCode ierr;
-    // if the preconditioner is present, set it
+
+    // extract the preconditioner
+    PC pc;
+    ierr = KSPGetPC(d_petsc_solver, &pc);
+
+    // if a preconditioner object is present, set it
     if (P)
     {
       d_P  = P;
-      PC pc;
-      ierr = KSPGetPC(d_petsc_solver, &pc);
       ierr = PCSetType(pc, PCSHELL);
+      // internally, this tells petsc the shell operator
       d_P->set_petsc_pc(pc);
     }
     // else do something else
+    {
+      ierr = PCSetType(pc, PCNONE);
+    }
 
     // Set the operator.
     ierr = KSPSetOperators(d_petsc_solver,
                            d_A->petsc_matrix(),
                            d_A->petsc_matrix(),
                            SAME_NONZERO_PATTERN);
+
     if (side == Base::LEFT)
       ierr = KSPSetPCSide(d_petsc_solver, PC_LEFT);
     else if (side == Base::RIGHT)
@@ -115,11 +123,17 @@ private:
    */
   void solve_impl(const Vector<PetscScalar> &b, Vector<PetscScalar> &x);
 
+  /// let the monitor wrapper call our monitor
+  friend PetscErrorCode
+  petsc_ksp_monitor(KSP ksp, PetscInt it, PetscReal rnorm, void* ctx);
 };
+
+/// Monitor the solution
+PetscErrorCode petsc_ksp_monitor(KSP ksp, PetscInt it, PetscReal rnorm, void* ctx);
 
 } // end namespace callow
 
 // Inline member definitions
 #include "PetscSolver.i.hh"
 
-#endif /* PETSCSOLVER_HH_ */
+#endif /* callow_PETSCSOLVER_HH_ */

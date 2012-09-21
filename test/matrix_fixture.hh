@@ -24,7 +24,7 @@ typename Matrix<T>::SP_matrix test_matrix_1(int n = 5)
   A->preallocate(3);
 
   double l = -0.20;
-  double d = -0.50;
+  double d =  0.50;
   double u = -0.21;
 
   for (int row = 0; row < n; row++)

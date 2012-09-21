@@ -7,12 +7,10 @@
  */
 //---------------------------------------------------------------------------//
 
-#ifndef PETSCSOLVER_I_HH_
-#define PETSCSOLVER_I_HH_
+#ifndef callow_PETSCSOLVER_I_HH_
+#define callow_PETSCSOLVER_I_HH_
 
 #include "matrix/Matrix.hh"
-#include <cmath>
-#include <cstdio>
 
 namespace callow
 {
@@ -25,10 +23,26 @@ inline void PetscSolver::
 solve_impl(const Vector<PetscScalar> &b, Vector<PetscScalar> &x)
 {
   PetscErrorCode ierr;
-  ierr = KSPSolve(d_petsc_solver, const_cast<Vector<PetscScalar>* >(&b)->petsc_vector(), x.petsc_vector());
+
+  // set array for residual
+  ierr = KSPSetResidualHistory(d_petsc_solver, &d_L2_residual[0],
+                               d_L2_residual.size(), PETSC_TRUE);
+
+  // solve the problem
+  ierr = KSPSolve(d_petsc_solver,
+                  const_cast<Vector<PetscScalar>* >(&b)->petsc_vector(),
+                  x.petsc_vector());
   Insist(!ierr, "Error in KSPSolve.");
+
+}
+
+inline PetscErrorCode petsc_ksp_monitor(KSP ksp, PetscInt it, PetscReal rnorm, void* ctx)
+{
+  PetscSolver* solver = (PetscSolver*)ctx;
+  solver->monitor(it, rnorm); // note, petsc is in charge of terminating
+  return 0;
 }
 
 } // end namespace callow
 
-#endif /* PETSCSOLVER_I_HH_ */
+#endif /* callow_PETSCSOLVER_I_HH_ */
