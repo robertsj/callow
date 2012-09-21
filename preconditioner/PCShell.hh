@@ -54,10 +54,6 @@ public:
   // PUBLIC FUNCTIONS
   //-------------------------------------------------------------------------//
 
-#ifdef CALLOW_ENABLE_PETSC
-  /// return petsc preconditioner
-  PC petsc_pc() {return d_petsc_pc;}
-#endif
 
   //-------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL PRECONDITIONERS MUST IMPLEMENT THIS
@@ -74,19 +70,7 @@ protected:
 
   using Base::d_name;
 
-#ifdef CALLOW_ENABLE_PETSC
-  /// PETSc preconditioner
-  PC d_petsc_pc;
-#endif
-
 };
-
-#ifdef CALLOW_ENABLE_PETSC
-// this is the function petsc actual calls; internally, it redirects
-// to our own shell operation
-inline PetscErrorCode pc_apply_wrapper(PC pc, Vec x, Vec y);
-#endif
-
 
 } // end namespace callow
 

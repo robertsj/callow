@@ -5,6 +5,7 @@ SET(SOLVER_SRC
   ${SRC_DIR}/Jacobi.cc
   ${SRC_DIR}/GaussSeidel.cc
   ${SRC_DIR}/GMRES.cc
+  ${SRC_DIR}/PetscSolver.cc
   PARENT_SCOPE
 )
 

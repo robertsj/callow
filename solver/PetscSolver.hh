@@ -30,7 +30,11 @@ public:
   // TYPEDEFS
   //-------------------------------------------------------------------------//
 
-  typedef LinearSolver<PetscScalar> Base;
+  typedef LinearSolver<PetscScalar>                       Base;
+  typedef Base::SP_solver                                 SP_solver;
+  typedef MatrixBase<PetscScalar>::SP_matrix              SP_matrix;
+  typedef Preconditioner<PetscScalar>::SP_preconditioner  SP_preconditioner;
+  typedef Vector<PetscScalar>::SP_vector                  SP_vector;
 
   //-------------------------------------------------------------------------//
   // CONSTRUCTOR & DESTRUCTOR
@@ -43,6 +47,42 @@ public:
   //-------------------------------------------------------------------------//
   // PUBLIC FUNCTIONS
   //-------------------------------------------------------------------------//
+
+  /**
+   *  This overloads the default implementation so that we can extract
+   *  the PETSc PC object and set it in our PC object if present.
+   *
+   */
+  virtual void set_operators(SP_matrix A,
+                             SP_preconditioner P = SP_preconditioner(0),
+                             const int side = Base::LEFT)
+  {
+    Require(A);
+    d_A = A;
+    Ensure(d_A->number_rows() == d_A->number_columns());
+    PetscErrorCode ierr;
+    // if the preconditioner is present, set it
+    if (P)
+    {
+      d_P  = P;
+      PC pc;
+      ierr = KSPGetPC(d_petsc_solver, &pc);
+      ierr = PCSetType(pc, PCSHELL);
+      d_P->set_petsc_pc(pc);
+    }
+    // else do something else
+
+    // Set the operator.
+    ierr = KSPSetOperators(d_petsc_solver,
+                           d_A->petsc_matrix(),
+                           d_A->petsc_matrix(),
+                           SAME_NONZERO_PATTERN);
+    if (side == Base::LEFT)
+      ierr = KSPSetPCSide(d_petsc_solver, PC_LEFT);
+    else if (side == Base::RIGHT)
+      ierr = KSPSetPCSide(d_petsc_solver, PC_RIGHT);
+    Ensure(!ierr);
+  }
 
 private:
 
@@ -60,8 +100,7 @@ private:
   using LinearSolver<PetscScalar>::d_LI_residual;
   using LinearSolver<PetscScalar>::d_number_iterations;
   using LinearSolver<PetscScalar>::d_A;
-  using LinearSolver<PetscScalar>::d_PL;
-  using LinearSolver<PetscScalar>::d_PR;
+  using LinearSolver<PetscScalar>::d_P;
 
   // petsc solver type
   KSP d_petsc_solver;

@@ -71,8 +71,7 @@ private:
   using LinearSolver<T>::d_LI_residual;
   using LinearSolver<T>::d_number_iterations;
   using LinearSolver<T>::d_A;
-  using LinearSolver<T>::d_PL;
-  using LinearSolver<T>::d_PR;
+  using LinearSolver<T>::d_P;
 
   /// relaxation factor
   double d_omega;

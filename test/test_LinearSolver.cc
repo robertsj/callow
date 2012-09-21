@@ -110,8 +110,8 @@ int test_GMRES(int argc, char *argv[])
 
   GMRES<double> solver(0, 1e-3, 10000, 20);
  // GaussSeidel<double> solver(0, 1e-3, 20000);
-  solver.set_operators(A);
-  solver.set_left_pc(PI);
+  solver.set_operators(A, PI, solver.LEFT);
+
   //solver.set_monitor_output(true);
   //solver.set_monitor_diverge(true);
 

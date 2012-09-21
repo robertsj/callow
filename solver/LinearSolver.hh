@@ -80,6 +80,11 @@ public:
     SUCCESS, MAXIT, DIVERGE
   };
 
+  enum pcside
+  {
+    NONE, LEFT, RIGHT
+  };
+
   //-------------------------------------------------------------------------//
   // TYPEDEFS
   //-------------------------------------------------------------------------//
@@ -107,6 +112,7 @@ public:
     , d_monitor_output(false)
     , d_monitor_diverge(true)
     , d_name(name)
+    , d_pc_side(NONE)
   {
     Require(d_absolute_tolerance >= 0.0);
     Require(d_relative_tolerance >= 0.0);
@@ -120,30 +126,30 @@ public:
   //-------------------------------------------------------------------------//
 
   /**
-   *  \param A  linear operator
-   *  \param P  optional preconditioning process
+   *  Sets the operators for the linear system to solve.
+   *
+   *  \param A      linear operator
+   *  \param P      optional preconditioning process
+   *  \param side   specifies on what side of A the preconditioner operates
    */
-  void set_operators(SP_matrix A,
-                     SP_preconditioner PL = SP_preconditioner(0),
-                     SP_preconditioner PR = SP_preconditioner(0))
+  virtual void set_operators(SP_matrix A,
+                             SP_preconditioner P = SP_preconditioner(0),
+                             const int side = LEFT)
   {
     Require(A);
     d_A = A;
     Ensure(d_A->number_rows() == d_A->number_columns());
-    if (PL) d_PL = PL;
-    if (PR) d_PR = PR;
+    if (P) d_P = P;
+    d_pc_side = side;
   }
 
-  void set_left_pc(SP_preconditioner PL)
+  /**
+   *  Get the preconditioner.  This allows the client to build, change, etc.
+   *
+   */
+  SP_preconditioner preconditioner()
   {
-    Require(PL);
-    d_PL = PL;
-  }
-
-  void set_right_pc(SP_preconditioner PR)
-  {
-    Require(PR);
-    d_PR = PR;
+    return d_P;
   }
 
   /**
@@ -213,10 +219,10 @@ protected:
   std::vector<double> d_LI_residual;
   int    d_number_iterations;
   SP_matrix d_A;
-  /// left preconditioner
-  SP_preconditioner d_PL;
-  /// right preconditioner
-  SP_preconditioner d_PR;
+  /// preconditioner
+  SP_preconditioner d_P;
+  /// preconditioner side (one only, and left by default)
+  int d_pc_side;
   bool d_monitor_output;
   bool d_monitor_diverge;
 

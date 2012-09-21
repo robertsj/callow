@@ -99,7 +99,7 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
     t.subtract(b);
     t.scale(-1);
     //   apply left preconditioner
-    if (d_PL) d_PL->apply(t, r);
+    if (d_P and d_pc_side == Base::LEFT) d_P->apply(t, r);
     //   compute norm of residual
     T rho = r.norm(Vec_T::L2);
 
@@ -137,18 +137,18 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       //---------------------------------------------------------------------//
 
       // right preconditioner
-      if (d_PR)
+      if (d_P and d_pc_side == Base::RIGHT)
       {
         t.copy(v[k]);
-        d_PR->apply(t, v[k]);
+        d_P->apply(t, v[k]);
       }
       // apply A
       d_A->multiply(v[k], v[k+1]);
       // left preconditioner
-      if (d_PL)
+      if (d_P and d_pc_side == Base::LEFT)
       {
         t.copy(v[k+1]);
-        d_PL->apply(t, v[k+1]);
+        d_P->apply(t, v[k+1]);
       }
 
       //---------------------------------------------------------------------//
@@ -240,10 +240,10 @@ inline void GMRES<T>::solve_impl(const Vector<T> &b, Vector<T> &x)
       x.add_a_times_x(y[i], v[i]);
     }
     // \todo this assumes x_0 = 0; otherwise, need x = x_0 + inv(P)*(V*y)
-    if (d_PR)
+    if (d_P and d_pc_side == Base::RIGHT)
     {
       t.copy(x);
-      d_PR->apply(t, x);
+      d_P->apply(t, x);
     }
 
 

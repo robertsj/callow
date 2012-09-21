@@ -31,7 +31,8 @@ namespace callow
  *  \f]
  *  or
  *  \f[
- *      x^{n+1} = \overbrace{-\mathbf{D+L}^{-1}(\mathbf{U})}^{\mathbf{M}}x^{n} + \mathbf{D+L}^{-1}b \, .
+ *      x^{n+1} = \overbrace{-\mathbf{D+L}^{-1}(\mathbf{U})}^
+ *                          {\mathbf{M}}x^{n} + \mathbf{D+L}^{-1}b \, .
  *  \f]
  *  Alternatively, one can swap \f$ U \f$ and \f$ L \f$ to produce
  *  the backward Gauss-Seidel iteration.  If used together, one
@@ -80,8 +81,7 @@ private:
   using LinearSolver<T>::d_LI_residual;
   using LinearSolver<T>::d_number_iterations;
   using LinearSolver<T>::d_A;
-  using LinearSolver<T>::d_PL;
-  using LinearSolver<T>::d_PR;
+  using LinearSolver<T>::d_P;
 
   //-------------------------------------------------------------------------//
   // ABSTRACT INTERFACE -- ALL LINEAR SOLVERS MUST IMPLEMENT THIS
